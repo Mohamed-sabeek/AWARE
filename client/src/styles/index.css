@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2F80ED;
+  --color-secondary: #4EA5FF;
+  --color-accent: #6FC8FF;
+  --color-bg-light: #F8FBFF;
+  --color-text-primary: #071A3D;
+  --color-text-secondary: #5C6F89;
+  
+  --font-sans: "Inter", sans-serif;
+}
+
+/* Base styles and custom utilities */
+@layer utilities {
+  .glass {
+    @apply bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgba(47,128,237,0.05)];
+  }
+  
+  .glass-card {
+    @apply bg-[rgba(255,255,255,0.78)] backdrop-blur-2xl border border-white rounded-[20px] shadow-[0_12px_40px_rgba(47,128,237,0.08)] hover:shadow-[0_16px_50px_rgba(47,128,237,0.12)] transition-all duration-300;
+  }
+  
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-accent;
+  }
+}
+
+html {
+  font-size: 85%; /* Scales down all rem-based Tailwind utilities */
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg-light);
+  color: var(--color-text-primary);
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient 6s linear infinite;
+}
