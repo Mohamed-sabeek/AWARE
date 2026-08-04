@@ -100,7 +100,7 @@ const TechnologyStack = () => {
           transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
           className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-indigo-400/15 rounded-full blur-[120px]"
         />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
       </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 max-w-[1400px]">

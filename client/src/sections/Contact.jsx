@@ -8,9 +8,9 @@ const Contact = () => {
 
       <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
         <div className="flex flex-col lg:flex-row gap-16">
-          
+
           {/* Left: Contact Info */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -22,7 +22,7 @@ const Contact = () => {
             <p className="text-lg text-text-secondary mb-12">
               Interested in deploying AWARE in your city? Reach out to our team for a consultation and live demonstration.
             </p>
-            
+
             <div className="flex flex-col gap-8">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-primary/10 rounded-xl text-primary">
@@ -30,34 +30,34 @@ const Contact = () => {
                 </div>
                 <div>
                   <h4 className="text-lg font-bold text-text-primary">Email Us</h4>
-                  <p className="text-text-secondary mt-1">hello@aware-system.io</p>
+                  <p className="text-text-secondary mt-1">safeeofficial1730@gmail.com</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-primary/10 rounded-xl text-primary">
                   <Phone className="w-6 h-6" />
                 </div>
                 <div>
                   <h4 className="text-lg font-bold text-text-primary">Call Us</h4>
-                  <p className="text-text-secondary mt-1">+1 (555) 123-4567</p>
+                  <p className="text-text-secondary mt-1">6383028607</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-primary/10 rounded-xl text-primary">
                   <MapPin className="w-6 h-6" />
                 </div>
                 <div>
                   <h4 className="text-lg font-bold text-text-primary">Location</h4>
-                  <p className="text-text-secondary mt-1">Innovation Hub, Silicon Valley, CA</p>
+                  <p className="text-text-secondary mt-1">Coimbatore</p>
                 </div>
               </div>
             </div>
           </motion.div>
 
           {/* Right: Contact Form */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
@@ -68,24 +68,24 @@ const Contact = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-semibold text-text-primary mb-2">First Name</label>
-                    <input type="text" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm" placeholder="John" />
+                    <input type="text" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm" placeholder="Monkey D" />
                   </div>
                   <div className="flex flex-col">
                     <label className="text-sm font-semibold text-text-primary mb-2">Last Name</label>
-                    <input type="text" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm" placeholder="Doe" />
+                    <input type="text" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm" placeholder="Luffy" />
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col">
                   <label className="text-sm font-semibold text-text-primary mb-2">Email Address</label>
-                  <input type="email" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm" placeholder="john@company.com" />
+                  <input type="email" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm" placeholder="luffy@strawhat.com" />
                 </div>
-                
+
                 <div className="flex flex-col">
                   <label className="text-sm font-semibold text-text-primary mb-2">Message</label>
                   <textarea rows="4" className="px-5 py-4 rounded-xl border border-primary/10 bg-white/50 focus:bg-white focus:outline-none focus:border-primary/50 transition-colors shadow-sm resize-none" placeholder="How can we help you?"></textarea>
                 </div>
-                
+
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}

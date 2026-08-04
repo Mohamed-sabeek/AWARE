@@ -1,6 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { Globe, Mail, Camera } from 'lucide-react';
+import sabeekImg from '../assets/sabeek.png';
+import nivethaImg from '../assets/nivetha.png';
+import abiramiImg from '../assets/abirami.png';
+import monishImg from '../assets/monish.png';
 
 const Github = (props) => (
   <svg
@@ -42,10 +46,25 @@ const Linkedin = (props) => (
 const teamData = [
   {
     id: 1,
-    name: 'Alex Developer',
-    role: 'Full Stack Developer',
-    description: 'Specializes in scalable backend architecture and responsive web interfaces.',
+    name: 'Mohamed Sabeek',
+    role: 'Team Lead • Full-Stack Developer • UI/UX Designer',
+    description: 'Leading the development of AWARE by designing the user experience and building the complete full-stack platform, integrating AI, IoT, GIS, and cloud technologies into a unified environmental monitoring solution.',
     badges: ['React', 'Node.js', 'MongoDB'],
+    image: sabeekImg,
+    socials: {
+      portfolio: 'https://myportfolio-alpha-gules-77.vercel.app/',
+      linkedin: 'https://www.linkedin.com/in/mohamed-sabeek-1a272a327/',
+      github: 'https://github.com/Mohamed-sabeek',
+      email: 'mailto:safeeofficial1730@gmail.com'
+    }
+  },
+  {
+    id: 4,
+    name: 'Monish',
+    role: 'GIS & Data Engineer',
+    description: 'Expert in processing satellite imagery and geospatial analysis.',
+    badges: ['GIS', 'Mapbox', 'Data'],
+    image: monishImg,
     socials: {
       portfolio: '#',
       linkedin: '#',
@@ -55,41 +74,26 @@ const teamData = [
   },
   {
     id: 2,
-    name: 'Sarah Engineer',
-    role: 'AI Engineer',
-    description: 'Focuses on computer vision models and real-time inference pipelines.',
-    badges: ['AI', 'YOLOv8', 'OpenCV'],
+    name: 'Abirami S',
+    role: 'Software Developer ',
+    image: abiramiImg,
     socials: {
-      portfolio: '#',
-      linkedin: '#',
-      github: '#',
-      email: 'mailto:#'
+      portfolio: 'https://portfolio-deploy-pi-six.vercel.app/',
+      linkedin: 'https://www.linkedin.com/in/abirami-s-7138a8332/',
+      github: 'https://github.com/abiramiit',
+      email: 'mailto:abirami.s2024it@sece.ac.in'
     }
   },
   {
     id: 3,
-    name: 'Michael Maker',
-    role: 'IoT & Embedded Systems',
-    description: 'Designs custom hardware integrations for sensor data collection.',
-    badges: ['IoT', 'ESP32', 'C++'],
+    name: 'Nivetha',
+    role: 'Software Developer',
+    image: nivethaImg,
     socials: {
-      portfolio: '#',
-      linkedin: '#',
-      github: '#',
-      email: 'mailto:#'
-    }
-  },
-  {
-    id: 4,
-    name: 'Emma Mapper',
-    role: 'GIS & Data Engineer',
-    description: 'Expert in processing satellite imagery and geospatial analysis.',
-    badges: ['GIS', 'Mapbox', 'Data'],
-    socials: {
-      portfolio: '#',
-      linkedin: '#',
-      github: '#',
-      email: 'mailto:#'
+      portfolio: 'https://nivetha-k-software-developer-portfolio-9mlooyr3q.vercel.app',
+      linkedin: 'https://www.linkedin.com/in/nivetha-k-1b4832327',
+      github: 'https://github.com/Nivetha-K-max',
+      email: 'mailto:nivetha.k2024it@sece.ac.in'
     }
   }
 ];
@@ -100,7 +104,7 @@ const badgePositions = [
   { bottom: '15%', left: '-10%', delay: 0.2 }
 ];
 
-const SocialIcon = ({ Icon, tooltip, href }) => {
+const SocialIcon = ({ Icon, tooltip, href, delay = 0 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -111,9 +115,10 @@ const SocialIcon = ({ Icon, tooltip, href }) => {
     >
       <a 
         href={href}
-        className="w-10 h-10 rounded-full bg-white/50 backdrop-blur-md border border-primary/10 flex items-center justify-center text-text-secondary transition-all duration-300 hover:bg-primary hover:text-white hover:scale-110 hover:shadow-[0_0_20px_rgba(47,128,237,0.4)] hover:border-primary/50 relative z-10"
+        style={{ transitionDelay: `0s, ${delay}s, 0s` }}
+        className="w-9 h-9 rounded-full bg-white/70 backdrop-blur-md border border-primary/10 flex items-center justify-center text-text-secondary transition-all duration-300 hover:!bg-gradient-to-br hover:!from-primary hover:!to-blue-600 hover:!text-white hover:scale-110 hover:shadow-[0_0_20px_rgba(47,128,237,0.4)] hover:border-transparent relative z-10 group-hover:-translate-y-1.5"
       >
-        <Icon className="w-[18px] h-[18px]" strokeWidth={2} />
+        <Icon className="w-4 h-4 transition-colors" strokeWidth={2.5} />
       </a>
       
       <AnimatePresence>
@@ -170,7 +175,7 @@ const Team = () => {
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
           className="absolute bottom-1/4 right-1/4 w-[45rem] h-[45rem] bg-indigo-400/15 rounded-full blur-[120px]"
         />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
       </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 max-w-[1400px]">
@@ -212,44 +217,55 @@ const Team = () => {
             <motion.div
               key={member.id}
               variants={itemVariants}
-              className="relative bg-white/50 backdrop-blur-3xl border border-white/60 rounded-[32px] p-8 flex flex-col items-center text-center shadow-[0_8px_32px_rgba(47,128,237,0.06)] hover:shadow-[0_16px_48px_rgba(47,128,237,0.15)] hover:-translate-y-2.5 hover:border-primary/20 transition-all duration-500 group h-full"
+              className="relative bg-white/40 backdrop-blur-3xl border border-white/60 rounded-[32px] overflow-hidden flex flex-col items-center text-center shadow-[0_8px_32px_rgba(47,128,237,0.04)] hover:shadow-[0_16px_48px_rgba(47,128,237,0.12)] hover:-translate-y-2 hover:border-primary/30 transition-all duration-500 group h-[460px]"
             >
-              {/* Optional Floating Tech Badges (Visible on Hover) */}
-              <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                {member.badges.map((badge, bIdx) => (
-                  <motion.div
-                    key={bIdx}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileHover={{ scale: 1.1 }}
-                    className="absolute px-2.5 py-1 bg-white/80 backdrop-blur-md border border-primary/10 rounded-full shadow-sm text-[10px] font-bold text-primary tracking-wide z-20"
-                    style={{ ...badgePositions[bIdx] }}
-                  >
-                    {badge}
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Profile Placeholder */}
-              <div className="w-28 h-28 mx-auto rounded-full border-2 border-dashed border-primary/30 bg-gradient-to-br from-blue-50 to-indigo-50/50 flex flex-col items-center justify-center mb-6 relative group-hover:scale-105 group-hover:border-primary/50 group-hover:shadow-[0_0_30px_rgba(47,128,237,0.15)] transition-all duration-500 overflow-hidden z-10">
-                <Camera className="w-7 h-7 text-primary/50 mb-1.5 group-hover:text-primary/80 transition-colors" />
-                <span className="text-[10px] font-bold text-primary/50 group-hover:text-primary/80 uppercase tracking-widest transition-colors">Photo</span>
+              {/* Profile Image Section (Approx 65%) */}
+              <div className="w-full h-[65%] relative pt-4 px-4">
+                {/* Background Gradient & Glow */}
+                <div className="absolute inset-4 rounded-[24px] bg-gradient-to-b from-blue-100/40 to-indigo-50/20 group-hover:from-blue-200/50 group-hover:to-primary/10 transition-colors duration-500 overflow-hidden">
+                  <div className="absolute inset-0 bg-primary/10 blur-[30px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                </div>
+                
+                {/* Image / Placeholder */}
+                <motion.div 
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                  className="w-full h-full relative z-10 flex items-end justify-center pb-2"
+                >
+                  {member.image ? (
+                    <img 
+                      src={member.image} 
+                      alt={member.name} 
+                      className="w-[90%] h-full object-contain object-bottom drop-shadow-[0_10px_20px_rgba(47,128,237,0.15)] group-hover:scale-105 transition-transform duration-700 ease-out" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-primary/30 group-hover:text-primary/60 transition-colors pb-8">
+                      <Camera className="w-10 h-10 mb-2" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Photo</span>
+                    </div>
+                  )}
+                </motion.div>
               </div>
               
-              {/* Details */}
-              <h3 className="text-xl font-bold text-text-primary mb-1.5 relative z-10">{member.name}</h3>
-              <p className="text-[13px] text-primary font-bold mb-4 uppercase tracking-wider relative z-10 group-hover:text-blue-600 transition-colors drop-shadow-sm">
-                {member.role}
-              </p>
-              <p className="text-[14px] text-text-secondary leading-relaxed mb-8 flex-grow relative z-10">
-                {member.description}
-              </p>
-              
-              {/* Social Links */}
-              <div className="flex justify-center gap-3 relative z-10 mt-auto">
-                <SocialIcon Icon={Globe} tooltip="Portfolio" href={member.socials.portfolio} />
-                <SocialIcon Icon={Linkedin} tooltip="LinkedIn" href={member.socials.linkedin} />
-                <SocialIcon Icon={Github} tooltip="GitHub" href={member.socials.github} />
-                <SocialIcon Icon={Mail} tooltip="Email" href={member.socials.email} />
+              {/* Bottom Information Panel (Approx 35%) */}
+              <div className="w-full flex-1 flex flex-col items-center justify-center p-5 bg-white/40 backdrop-blur-md border-t border-white/50 relative z-20">
+                <h3 className="text-lg font-extrabold text-blue-950 mb-1 group-hover:text-primary transition-colors">{member.name}</h3>
+                <p className="text-[11px] font-bold text-primary uppercase tracking-widest leading-snug px-2 text-center">
+                  {member.role.split('•').map((part, i, arr) => (
+                    <span key={i}>
+                      {part.trim()}
+                      {i < arr.length - 1 && <span className="mx-1 text-primary/50">•</span>}
+                    </span>
+                  ))}
+                </p>
+                
+                {/* Social Links */}
+                <div className="flex justify-center gap-3 mt-4 w-full">
+                  <SocialIcon Icon={Globe} tooltip="Portfolio" href={member.socials.portfolio} delay={0} />
+                  <SocialIcon Icon={Linkedin} tooltip="LinkedIn" href={member.socials.linkedin} delay={0.05} />
+                  <SocialIcon Icon={Github} tooltip="GitHub" href={member.socials.github} delay={0.1} />
+                  <SocialIcon Icon={Mail} tooltip="Email" href={member.socials.email} delay={0.15} />
+                </div>
               </div>
 
             </motion.div>

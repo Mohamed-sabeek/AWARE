@@ -98,7 +98,7 @@ const Footer = () => {
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
           className="absolute bottom-1/4 right-1/4 w-[35rem] h-[35rem] bg-indigo-400/15 rounded-full blur-[100px]"
         />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.1] mix-blend-soft-light"></div>
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.1] mix-blend-soft-light"></div>
       </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 max-w-[1400px]">
@@ -192,13 +192,6 @@ const Footer = () => {
           
           <div className="flex items-center justify-center gap-4">
             <span className="font-semibold text-text-primary/70">Version 1.0</span>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
-              </span>
-              <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">System Online</span>
-            </div>
           </div>
         </motion.div>
 
