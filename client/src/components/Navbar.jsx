@@ -7,9 +7,8 @@ import logoImg from '../assets/logo.png';
 const navLinks = [
   { name: 'Home', path: '#' },
   { name: 'Features', path: '#features' },
-  { name: 'Technology', path: '#technology' },
   { name: 'Workflow', path: '#workflow' },
-  { name: 'Dashboard', path: '#dashboard' },
+  { name: 'Technology', path: '#technology' },
   { name: 'Team', path: '#team' },
   { name: 'Contact', path: '#contact' },
 ];
