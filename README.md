@@ -48,7 +48,7 @@ Built with a gorgeous, Apple/Linear-inspired modern UI, AWARE leverages real-tim
    ```
    *Create a `.env` file in the `server` directory and configure your MongoDB connection:*
    ```env
-   PORT=5000
+   PORT=5009
    MONGO_URI=mongodb://127.0.0.1:27017/aware
    JWT_SECRET=your_jwt_secret_key
    NODE_ENV=development
@@ -75,7 +75,7 @@ Built with a gorgeous, Apple/Linear-inspired modern UI, AWARE leverages real-tim
    npm install
    npm run dev
    ```
-   The application will start on `http://localhost:5173`.
+   The application will start on `http://localhost:5183`.
 
 ## 🎨 UI/UX Highlights
 
