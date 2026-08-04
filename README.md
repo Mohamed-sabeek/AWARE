@@ -37,18 +37,42 @@ Built with a gorgeous, Apple/Linear-inspired modern UI, AWARE leverages real-tim
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/aware.git
+   git clone https://github.com/Mohamed-sabeek/AWARE.git
    cd AWARE
    ```
 
-2. **Install Frontend Dependencies:**
+2. **Backend Setup:**
+   ```bash
+   cd server
+   npm install
+   ```
+   *Create a `.env` file in the `server` directory and configure your MongoDB connection:*
+   ```env
+   PORT=5000
+   MONGO_URI=mongodb://127.0.0.1:27017/aware
+   JWT_SECRET=your_jwt_secret_key
+   NODE_ENV=development
+   ```
+
+3. **Seed the Database:**
+   Run the seed script to create the default Administrator account:
+   ```bash
+   node seed/adminSeed.js
+   ```
+   *Default Admin Credentials:*
+   - Email: `awareadmin@gmail.com`
+   - Password: `aware@admin`
+
+4. **Start the Backend Server:**
+   ```bash
+   npm run dev
+   ```
+
+5. **Frontend Setup:**
+   Open a new terminal window:
    ```bash
    cd client
    npm install
-   ```
-
-3. **Run the Frontend Development Server:**
-   ```bash
    npm run dev
    ```
    The application will start on `http://localhost:5173`.
