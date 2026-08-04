@@ -4,11 +4,12 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
 // Connect to Database
-// connectDB(); // Mock backend for landing page doesn't strictly need a DB if it's just a UI demo, but it's set up for the MERN requirement.
+connectDB();
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +24,8 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
+
 app.get('/', (req, res) => {
   res.send('AWARE API is running...');
 });

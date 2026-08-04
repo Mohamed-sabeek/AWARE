@@ -5,20 +5,36 @@ import { Link, useNavigate } from 'react-router-dom';
 import loginBg from '../assets/login-bg.png';
 import loginEarth from '../assets/login.png';
 import logo from '../assets/logo.png';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login and redirect
-    setTimeout(() => {
+    setError('');
+    
+    try {
+      const user = await login(email, password);
+      
+      // Role based navigation
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        setError('Only administrators can access this portal currently.');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to login. Please try again.');
       setIsLoading(false);
-      navigate('/');
-    }, 1500);
+    }
   };
 
   return (
@@ -83,8 +99,19 @@ const Login = () => {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="mt-8 flex flex-col gap-4">
+          <form onSubmit={handleLogin} className="mt-6 flex flex-col gap-5">
             
+            {/* Error Message */}
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-[12px] text-sm font-medium"
+              >
+                {error}
+              </motion.div>
+            )}
+
             {/* Email Field */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -98,6 +125,8 @@ const Login = () => {
               <input 
                 type="email" 
                 id="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="peer w-full h-[56px] pl-[48px] pr-[20px] pt-[24px] pb-[8px] transition-all duration-[250ms] bg-white/70 backdrop-blur-md border border-[#DCEBFF] rounded-[14px] text-gray-900 font-sans font-[500] text-[16px] focus:outline-none focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.02)] focus:shadow-[0_8px_24px_rgba(59,130,246,0.12)] placeholder-transparent"
                 placeholder="Email Address"
@@ -123,6 +152,8 @@ const Login = () => {
               <input 
                 type={showPassword ? 'text' : 'password'} 
                 id="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="peer w-full h-[56px] pl-[48px] pr-14 pt-[24px] pb-[8px] transition-all duration-[250ms] bg-white/70 backdrop-blur-md border border-[#DCEBFF] rounded-[14px] text-gray-900 font-sans font-[500] text-[16px] focus:outline-none focus:border-blue-500 focus:ring-[4px] focus:ring-blue-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.02)] focus:shadow-[0_8px_24px_rgba(59,130,246,0.12)] placeholder-transparent"
                 placeholder="Password"
