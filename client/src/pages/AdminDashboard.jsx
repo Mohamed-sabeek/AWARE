@@ -1,84 +1,104 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import { LogOut, Activity, AlertTriangle, FileVideo, Server } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Globe, Radio, AlertTriangle, Camera as CameraIcon, Mail, Activity } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import PremiumSummaryCard from '../components/ui/PremiumSummaryCard';
 
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
-
   return (
-    <div className="min-h-screen bg-[#F8FBFF] font-sans p-6 md:p-12">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-md border border-white p-6 rounded-2xl shadow-sm">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome Back,</h1>
-            <p className="text-xl text-blue-600 font-semibold">{user?.fullName}</p>
+    <div className="flex flex-col h-full w-full">
+      <PageHeader 
+        title="Dashboard"
+        description="Monitor your environmental monitoring platform in real time."
+      />
+      <div className="p-6 md:p-8 lg:p-10 w-full max-w-7xl mx-auto">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <PremiumSummaryCard 
+              title="Live AQI" 
+              value={0} 
+              total={500} 
+              trendVal="0"
+              trendDir="none"
+              trendPeriod="today"
+              statusText="Live Sync"
+              icon={Globe} 
+              themeColor="#8b5cf6" 
+              gradientBg="from-purple-50/40 to-transparent"
+              delay={0.1}
+            />
+            <PremiumSummaryCard 
+              title="Active Sensors" 
+              value={0} 
+              total={0} 
+              trendVal="0"
+              trendDir="none"
+              trendPeriod="today"
+              statusText="Online"
+              icon={Radio} 
+              themeColor="#10b981" 
+              gradientBg="from-emerald-50/40 to-transparent"
+              delay={0.15}
+            />
+            <PremiumSummaryCard 
+              title="Active Alerts" 
+              value={0} 
+              total={0} 
+              trendVal="0"
+              trendDir="none"
+              trendPeriod="today"
+              statusText="High Priority"
+              icon={AlertTriangle} 
+              themeColor="#ef4444" 
+              gradientBg="from-red-50/40 to-transparent"
+              delay={0.2}
+            />
+            
+            <PremiumSummaryCard 
+              title="Evidence Captured" 
+              value={0} 
+              total={0} 
+              trendVal="0"
+              trendDir="none"
+              trendPeriod="today"
+              statusText="Today"
+              icon={CameraIcon} 
+              themeColor="#0ea5e9" 
+              gradientBg="from-sky-50/40 to-transparent"
+              delay={0.25}
+            />
+            <PremiumSummaryCard 
+              title="Emails Sent" 
+              value={0} 
+              total={0} 
+              trendVal="0"
+              trendDir="none"
+              trendPeriod="today"
+              statusText="Delivered"
+              icon={Mail} 
+              themeColor="#f59e0b" 
+              gradientBg="from-amber-50/40 to-transparent"
+              delay={0.3}
+            />
+            <PremiumSummaryCard 
+              title="System Health" 
+              value={99.98} 
+              decimals={2}
+              total={100} 
+              trendVal="0"
+              trendDir="none"
+              trendPeriod="today"
+              statusText="Operational"
+              icon={Activity} 
+              themeColor="#3b82f6" 
+              gradientBg="from-blue-50/40 to-transparent"
+              delay={0.35}
+              percentageOverride={100}
+            />
           </div>
-          <button 
-            onClick={logout}
-            className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-full font-medium transition-colors shadow-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
-        </header>
-
-        {/* Status Indicator */}
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl font-medium inline-flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-          Logged in successfully as Administrator
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard icon={Activity} label="Total Sensors" value="24" color="text-blue-500" />
-          <StatCard icon={AlertTriangle} label="Active Alerts" value="3" color="text-red-500" />
-          <StatCard icon={FileVideo} label="Evidence Captured" value="18" color="text-indigo-500" />
-          <StatCard icon={Server} label="System Status" value="Operational" color="text-emerald-500" />
-        </div>
-
-        {/* User Info Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm"
-        >
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Current Session Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoField label="Name" value={user?.fullName} />
-            <InfoField label="Email" value={user?.email} />
-            <InfoField label="Phone" value={user?.phoneNumber} />
-            <InfoField label="Role" value={user?.role} className="capitalize" />
-          </div>
-        </motion.div>
-
       </div>
     </div>
   );
 };
-
-const StatCard = ({ icon: Icon, label, value, color }) => (
-  <motion.div 
-    whileHover={{ y: -4 }}
-    className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all"
-  >
-    <div className="flex items-center gap-4 mb-4">
-      <div className={`p-3 rounded-xl bg-gray-50 ${color}`}>
-        <Icon className="w-6 h-6" />
-      </div>
-      <h3 className="text-gray-500 font-medium">{label}</h3>
-    </div>
-    <p className="text-3xl font-bold text-gray-900">{value}</p>
-  </motion.div>
-);
-
-const InfoField = ({ label, value, className = '' }) => (
-  <div>
-    <p className="text-sm text-gray-500 mb-1">{label}</p>
-    <p className={`font-medium text-gray-900 ${className}`}>{value || 'N/A'}</p>
-  </div>
-);
 
 export default AdminDashboard;

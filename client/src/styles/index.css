@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
   --color-primary: #2F80ED;
@@ -46,6 +47,14 @@ body {
   animation: gradient 6s linear infinite;
 }
 
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
 /* Fix browser autofill overriding transparent backgrounds */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
@@ -54,3 +63,5 @@ input:-webkit-autofill:active {
     transition: background-color 9999s ease-in-out 0s;
     -webkit-text-fill-color: #0f172a !important; /* text-slate-900 */
 }
+.custom-scrollbar::-webkit-scrollbar { display: none; }
+.custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

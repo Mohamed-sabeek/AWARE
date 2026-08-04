@@ -5,6 +5,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import evidenceRoutes from './routes/evidenceRoutes.js';
+import sensorRoutes from './routes/sensorRoutes.js';
+import satelliteRoutes from './routes/satelliteRoutes.js';
 
 dotenv.config();
 
@@ -25,6 +28,9 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/evidence', evidenceRoutes);
+app.use('/api/sensors', sensorRoutes);
+app.use('/api/satellite', satelliteRoutes);
 
 app.get('/', (req, res) => {
   res.send('AWARE API is running...');
