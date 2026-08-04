@@ -45,3 +45,12 @@ body {
 .animate-gradient {
   animation: gradient 6s linear infinite;
 }
+
+/* Fix browser autofill overriding transparent backgrounds */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    transition: background-color 9999s ease-in-out 0s;
+    -webkit-text-fill-color: #0f172a !important; /* text-slate-900 */
+}

@@ -57,18 +57,18 @@ const Navbar = () => {
 
         {/* Action Buttons */}
         <div className="hidden lg:flex items-center gap-5">
-          <a
-            href="#login"
-            className="flex items-center justify-center px-[30px] py-[15px] rounded-full bg-white/80 backdrop-blur-md border border-primary/20 text-[15px] font-semibold tracking-wide text-primary shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-300 ease-in-out hover:bg-primary/5 hover:border-primary/30 hover:shadow-[0_4px_15px_rgba(47,128,237,0.1)] hover:-translate-y-[2px] hover:scale-[1.03]"
+          <Link
+            to="/login"
+            className="flex items-center justify-center px-[30px] py-[15px] rounded-full bg-white/80 backdrop-blur-md ring-1 ring-inset ring-primary/20 text-[15px] font-semibold tracking-wide text-primary shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-300 ease-in-out hover:bg-primary/5 hover:ring-primary/30 hover:shadow-[0_4px_15px_rgba(47,128,237,0.1)] hover:-translate-y-[2px] hover:scale-[1.03]"
           >
             Login
-          </a>
-          <a
-            href="#demo"
-            className="flex items-center justify-center px-[30px] py-[15px] rounded-full bg-gradient-to-r from-primary to-accent border border-transparent text-[15px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(47,128,237,0.2)] transition-all duration-300 ease-in-out hover:brightness-105 hover:shadow-[0_6px_20px_rgba(47,128,237,0.3)] hover:-translate-y-[2px] hover:scale-[1.03]"
+          </Link>
+          <Link
+            to="/register"
+            className="flex items-center justify-center px-[30px] py-[15px] rounded-full bg-gradient-to-r from-primary to-accent text-[15px] font-semibold tracking-wide text-white shadow-[0_4px_14px_rgba(47,128,237,0.2)] transition-all duration-300 ease-in-out hover:brightness-105 hover:shadow-[0_6px_20px_rgba(47,128,237,0.3)] hover:-translate-y-[2px] hover:scale-[1.03]"
           >
-            Live Demo
-          </a>
+            Register
+          </Link>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -101,18 +101,19 @@ const Navbar = () => {
             ))}
             <hr className="border-primary/10 my-2" />
             <div className="flex flex-col gap-3">
-              <a
-                href="#login"
+              <Link
+                to="/login"
                 className="text-center py-3 rounded-xl border border-primary text-primary font-semibold"
               >
                 Login
-              </a>
-              <a
-                href="#demo"
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="text-center py-3 rounded-xl bg-primary text-white font-semibold"
               >
-                Live Demo
-              </a>
+                Register
+              </Link>
             </div>
           </motion.div>
         )}

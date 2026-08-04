@@ -60,16 +60,16 @@ const teamData = [
   },
   {
     id: 4,
-    name: 'Monish',
+    name: 'Monish R K',
     role: 'GIS & Data Engineer',
     description: 'Expert in processing satellite imagery and geospatial analysis.',
     badges: ['GIS', 'Mapbox', 'Data'],
     image: monishImg,
     socials: {
-      portfolio: '#',
-      linkedin: '#',
-      github: '#',
-      email: 'mailto:#'
+      portfolio: 'https://portfolio-flax-five-85.vercel.app/',
+      linkedin: 'https://www.linkedin.com/in/monish-r-k-b4b6a2333',
+      github: 'https://github.com/Monish15112006',
+      email: 'mailto:monishrk2024it@sece.ac.in'
     }
   },
   {
