@@ -19,23 +19,32 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-});
+if (!process.env.FRONTEND_URL) {
+  console.warn('WARNING: FRONTEND_URL environment variable is not set.');
+}
 
 const allowedOrigins = [
   'http://localhost:5183',
   process.env.FRONTEND_URL
-];
+].filter(Boolean);
+
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 
 app.use(cors({
   origin: function (origin, callback) {
+    console.log("Incoming Origin:", origin);
+    console.log("Allowed Origins:", allowedOrigins);
+    
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn("Blocked Origin:", origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
