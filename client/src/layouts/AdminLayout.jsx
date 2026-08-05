@@ -11,17 +11,13 @@ import {
   Map, 
   Satellite, 
   TrendingUp, 
-  AlertTriangle, 
-  Users, 
-  Settings, 
+  Menu,
+  List,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Search,
-  Bell,
-  Menu,
-  User,
-  List
+  Bell
 } from 'lucide-react';
 
 const navItems = [
@@ -32,8 +28,6 @@ const navItems = [
   { path: '/admin/map', icon: Map, label: 'GIS Map' },
   { path: '/admin/satellite', icon: Satellite, label: 'Satellite' },
   { path: '/admin/analytics', icon: TrendingUp, label: 'Analytics' },
-  { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts' },
-  { path: '/admin/users', icon: Users, label: 'Users' },
 ];
 
 const AdminLayout = () => {
@@ -195,79 +189,8 @@ const AdminLayout = () => {
           <div className="h-px bg-gradient-to-r from-transparent via-[#D6E8FF] to-transparent" />
         </div>
 
-        {/* Bottom Area (Profile, Settings, Logout) */}
+        {/* Bottom Area (Logout) */}
         <div className="p-4 space-y-1">
-          {/* Profile */}
-          <div className="relative group">
-            <NavLink
-              to="/admin/profile"
-              className={({ isActive }) => 
-                `w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-colors relative z-10 ${
-                  isActive 
-                    ? 'bg-[#3B82F6] text-white shadow-md' 
-                    : 'text-[#64748B] hover:text-[#3B82F6] hover:bg-[#F8FBFF]'
-                }`
-              }
-            >
-              <div className={`relative shrink-0 transition-transform duration-300 group-hover:scale-[1.08] ${!isSidebarOpen && !isMobile ? 'mx-auto' : ''}`}>
-                <User className="w-5 h-5" strokeWidth={2} />
-              </div>
-              <AnimatePresence>
-                {(isSidebarOpen || isMobile) && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="font-medium whitespace-nowrap overflow-hidden"
-                  >
-                    Profile
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </NavLink>
-            {!isSidebarOpen && !isMobile && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-4 py-2.5 bg-white/80 backdrop-blur-md text-[#0F172A] font-semibold text-[14px] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-x-0 -translate-x-2 scale-95 group-hover:scale-100 transition-all duration-200 whitespace-nowrap shadow-[0_4px_12px_rgba(96,165,250,0.15)] border border-[#D6E8FF] z-50 pointer-events-none">
-                Profile
-                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rotate-45 bg-white border-l border-b border-[#D6E8FF]" />
-              </div>
-            )}
-          </div>
-
-          {/* Settings */}
-          <div className="relative group">
-            <NavLink
-              to="/admin/settings"
-              className={({ isActive }) => 
-                `w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-colors relative z-10 ${
-                  isActive 
-                    ? 'bg-[#3B82F6] text-white shadow-md' 
-                    : 'text-[#64748B] hover:text-[#3B82F6] hover:bg-[#F8FBFF]'
-                }`
-              }
-            >
-              <div className={`relative shrink-0 transition-transform duration-300 group-hover:scale-[1.08] ${!isSidebarOpen && !isMobile ? 'mx-auto' : ''}`}>
-                <Settings className="w-5 h-5" strokeWidth={2} />
-              </div>
-              <AnimatePresence>
-                {(isSidebarOpen || isMobile) && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: "auto" }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="font-medium whitespace-nowrap overflow-hidden"
-                  >
-                    Settings
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </NavLink>
-            {!isSidebarOpen && !isMobile && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-4 py-2.5 bg-white/80 backdrop-blur-md text-[#0F172A] font-semibold text-[14px] rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-x-0 -translate-x-2 scale-95 group-hover:scale-100 transition-all duration-200 whitespace-nowrap shadow-[0_4px_12px_rgba(96,165,250,0.15)] border border-[#D6E8FF] z-50 pointer-events-none">
-                Settings
-                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 rotate-45 bg-white border-l border-b border-[#D6E8FF]" />
-              </div>
-            )}
-          </div>
 
           {/* Logout */}
           <div className="relative group">

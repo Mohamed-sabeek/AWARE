@@ -96,6 +96,41 @@ const DetailsPanel = ({ selectedSensor, onClose }) => {
                     {selectedSensor.cameraId !== 'None' ? selectedSensor.cameraId : 'Not Equipped'}
                   </div>
                 </div>
+                <div className="bg-[#F8FBFF] border border-[#DCEEFF] rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">PM 2.5</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-[18px] font-bold text-[#0F172A] leading-none">{selectedSensor.pm25 ?? '--'}</span>
+                    <span className="text-[10px] font-medium text-slate-500">µg/m³</span>
+                  </div>
+                </div>
+                <div className="bg-[#F8FBFF] border border-[#DCEEFF] rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">PM 10</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-[18px] font-bold text-[#0F172A] leading-none">{selectedSensor.pm10 ?? '--'}</span>
+                    <span className="text-[10px] font-medium text-slate-500">µg/m³</span>
+                  </div>
+                </div>
+                <div className="bg-[#F8FBFF] border border-[#DCEEFF] rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Temperature</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-[18px] font-bold text-[#0F172A] leading-none">{selectedSensor.temperature ?? '--'}</span>
+                    <span className="text-[10px] font-medium text-slate-500">°C</span>
+                  </div>
+                </div>
+                <div className="bg-[#F8FBFF] border border-[#DCEEFF] rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Humidity</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-[18px] font-bold text-[#0F172A] leading-none">{selectedSensor.humidity ?? '--'}</span>
+                    <span className="text-[10px] font-medium text-slate-500">%</span>
+                  </div>
+                </div>
+                <div className="bg-[#F8FBFF] border border-[#DCEEFF] rounded-xl p-4 col-span-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">MQ135 Gas Level</p>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-[18px] font-bold text-[#0F172A] leading-none">{selectedSensor.mq135 ?? '--'}</span>
+                    <span className="text-[10px] font-medium text-slate-500">PPM</span>
+                  </div>
+                </div>
               </div>
 
               {/* Coordinates List */}

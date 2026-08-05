@@ -8,6 +8,9 @@ import authRoutes from './routes/authRoutes.js';
 import evidenceRoutes from './routes/evidenceRoutes.js';
 import sensorRoutes from './routes/sensorRoutes.js';
 import satelliteRoutes from './routes/satelliteRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import activityLogRoutes from './routes/activityLogRoutes.js';
 
 dotenv.config();
 
@@ -23,7 +26,21 @@ const io = new Server(server, {
   }
 });
 
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5183',
+  'https://YOUR-VERCEL-DOMAIN.vercel.app'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes
@@ -31,6 +48,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/evidence', evidenceRoutes);
 app.use('/api/sensors', sensorRoutes);
 app.use('/api/satellite', satelliteRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
 
 app.get('/', (req, res) => {
   res.send('AWARE API is running...');
@@ -56,7 +76,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5009;
 
 server.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);

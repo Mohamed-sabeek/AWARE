@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Clock, Satellite, Shield, Activity, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, Satellite, Shield } from 'lucide-react';
 
 const AQI_BADGE = (aqi) => {
   if (aqi <= 50)  return { label: 'Good',      bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
@@ -35,10 +35,6 @@ const InfoPanel = ({ selectedObservation, region, isFetchingLive }) => {
   const showStats = obs || isUnavailable;
 
   const badge = obs ? AQI_BADGE(obs.aqiEstimate) : { label: 'Unavailable', bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200' };
-
-  const diff = obs ? obs.aqiEstimate - (obs.groundSensorAqi ?? obs.aqiEstimate) : 0;
-  const isMatched = Math.abs(diff) <= 15;
-  const confidence = obs ? Math.max(75, obs.quality - Math.abs(diff) * 0.5).toFixed(0) : 0;
 
   const formatTime = (dt) => dt ? new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '--';
   const formatDate = (dt) => dt ? new Date(dt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--';
@@ -118,63 +114,6 @@ const InfoPanel = ({ selectedObservation, region, isFetchingLive }) => {
         </div>
       </div>
 
-      {/* Comparison Card */}
-      {showStats && (
-        <motion.div
-          key={obs ? `cmp-${obs._id}` : 'cmp-empty'}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.1 }}
-          className="bg-white border border-[#E2F0FF] rounded-[24px] shadow-sm px-6 py-5"
-        >
-          <h3 className="text-[14px] font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#60A5FA]" />
-            Ground vs Satellite
-          </h3>
-
-          {/* Side by Side */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 bg-[#F0F9FF] border border-[#BAE6FD] rounded-2xl px-4 py-3 text-center">
-              <div className="text-[11px] font-bold text-[#0EA5E9] uppercase tracking-widest mb-1">Ground Sensor</div>
-              <div className="text-[32px] font-bold text-slate-800 leading-none">{obs ? (obs.groundSensorAqi ?? '—') : '--'}</div>
-              <div className="text-[11px] text-slate-400 mt-1">AQI</div>
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
-              <div className={`text-[13px] font-bold ${diff >= 0 ? 'text-orange-500' : 'text-emerald-600'}`}>
-                {obs ? (diff >= 0 ? `+${diff}` : diff) : '--'}
-              </div>
-            </div>
-            <div className="flex-1 bg-[#F5F3FF] border border-[#C4B5FD] rounded-2xl px-4 py-3 text-center">
-              <div className="text-[11px] font-bold text-[#8B5CF6] uppercase tracking-widest mb-1">Satellite Est.</div>
-              <div className="text-[32px] font-bold text-slate-800 leading-none">{obs ? obs.aqiEstimate : '--'}</div>
-              <div className="text-[11px] text-slate-400 mt-1">AQI</div>
-            </div>
-          </div>
-
-          {/* Validation Row */}
-          <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-slate-400" />
-              <span className="text-[13px] font-medium text-slate-500">Validation</span>
-            </div>
-            <span className={`text-[12px] font-bold px-3 py-1 rounded-full border ${
-              !obs ? 'bg-slate-50 text-slate-500 border-slate-200' :
-              isMatched
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-red-50 text-red-600 border-red-200'
-            }`}>
-              {!obs ? '--' : (isMatched ? 'Matched ✓' : 'Diverged ✗')}
-            </span>
-          </div>
-          <div className="flex items-center justify-between pt-2">
-            <span className="text-[13px] font-medium text-slate-500">Confidence</span>
-            <span className="text-[13px] font-bold text-[#3B82F6]">{obs ? `${confidence}%` : '--'}</span>
-          </div>
-        </motion.div>
-      )}
     </motion.div>
   );
 };

@@ -60,10 +60,6 @@ const PageHeader = ({ title, description }) => {
         {/* Notifications */}
         <button className="relative p-3 bg-white border border-[#DCEEFF] rounded-full text-[#64748B] hover:text-[#3B82F6] shadow-sm hover:shadow-[0_4px_12px_rgba(59,130,246,0.15)] transition-all group">
           <Bell className="w-5 h-5 group-hover:animate-wiggle" />
-          <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
-          </span>
         </button>
       </div>
     </motion.header>

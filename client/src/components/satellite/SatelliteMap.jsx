@@ -76,7 +76,7 @@ const SatelliteMap = ({ observations, selectedObservation, onSelectObservation, 
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, delay: 0.4 }}
-      className="relative flex-1 rounded-[24px] overflow-hidden border border-[#DCEEFF] shadow-sm bg-white"
+      className="relative z-0 flex-1 rounded-[24px] overflow-hidden border border-[#DCEEFF] shadow-sm bg-white"
       style={{ minHeight: 520 }}
     >
       {/* Map */}

@@ -62,11 +62,6 @@ const satelliteObservationSchema = new mongoose.Schema(
       lat: { type: Number, required: true },
       lng: { type: Number, required: true },
     },
-    // Ground sensor AQI — populated later when MQ135 hardware is connected
-    groundSensorAqi: {
-      type: Number,
-      default: null,
-    },
     // Whether this observation was served from MongoDB cache (vs live Sentinel)
     fromCache: {
       type: Boolean,

@@ -93,6 +93,26 @@ AWARE features a stunning, $100M SaaS-style interface:
 - **3D Parallax & Magnetic Hover:** Interactive elements that respond smoothly to cursor movement.
 - **Micro-animations:** Lift effects, glowing ambient gradients, and stagger entrances using Framer Motion.
 
+## 🚀 Deployment
+
+The AWARE project is natively configured for dual-environment deployments (Localhost + Hosted).
+
+### Backend (Render)
+1. Fork or push your code to GitHub.
+2. Create a new **Web Service** on Render and point it to the `server/` directory.
+3. Configure the **Environment Variables**:
+   - `PORT=5009`
+   - `MONGO_URI`
+   - `JWT_SECRET`
+   - Cloudinary & CDSE Credentials
+4. Run `npm install` and start with `npm start`.
+
+### Frontend (Vercel)
+1. Create a new **Vite Project** on Vercel pointing to the `client/` directory.
+2. Set the Environment Variable:
+   - `VITE_API_URL=https://<your-render-url>.onrender.com/api`
+3. Deploy! (Vite will automatically route all Axios calls to your hosted backend).
+
 ## 🤝 Contributing
 Contributions, issues, and feature requests are welcome!
 

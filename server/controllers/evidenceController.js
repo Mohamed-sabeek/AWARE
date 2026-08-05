@@ -1,5 +1,6 @@
 import Evidence from '../models/Evidence.js';
 import cloudinary from '../config/cloudinary.js';
+import ActivityLog from '../models/ActivityLog.js';
 
 // @desc    Get all evidence
 // @route   GET /api/evidence
@@ -72,6 +73,17 @@ export const createEvidence = async (req, res) => {
     });
 
     const createdEvidence = await evidence.save();
+
+    await ActivityLog.create({
+      deviceName: location || 'ESP32-CAM',
+      deviceId: sensorId,
+      category: 'Evidence',
+      severity: 'Success',
+      description: `New evidence captured for ${detectionType}`,
+      location: location,
+      metadata: { evidenceId, confidence, aqi }
+    });
+
     res.status(201).json(createdEvidence);
   } catch (error) {
     console.error(error);
@@ -87,11 +99,28 @@ export const updateEvidence = async (req, res) => {
     const evidence = await Evidence.findById(req.params.id);
 
     if (evidence) {
+      const prevStatus = evidence.status;
       evidence.status = req.body.status || evidence.status;
+      evidence.verifiedBy = req.body.verifiedBy || evidence.verifiedBy;
+      evidence.notes = req.body.notes || evidence.notes;
       evidence.reportStatus = req.body.reportStatus || evidence.reportStatus;
       evidence.emailStatus = req.body.emailStatus || evidence.emailStatus;
+      evidence.penaltyAmount = req.body.penaltyAmount !== undefined ? req.body.penaltyAmount : evidence.penaltyAmount;
 
       const updatedEvidence = await evidence.save();
+
+      if (prevStatus !== updatedEvidence.status) {
+        await ActivityLog.create({
+          deviceName: evidence.location || 'ESP32-CAM',
+          deviceId: evidence.sensorId,
+          category: 'Evidence',
+          severity: updatedEvidence.status === 'Verified' ? 'Success' : (updatedEvidence.status === 'Rejected' ? 'Warning' : 'Info'),
+          description: `Evidence ${evidence.evidenceId} marked as ${updatedEvidence.status}`,
+          location: evidence.location,
+          metadata: { evidenceId: evidence.evidenceId }
+        });
+      }
+
       res.json(updatedEvidence);
     } else {
       res.status(404).json({ message: 'Evidence not found' });

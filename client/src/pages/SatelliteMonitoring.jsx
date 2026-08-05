@@ -7,7 +7,7 @@ import SatelliteFilterBar from '../components/satellite/SatelliteFilterBar';
 import SatelliteMap from '../components/satellite/SatelliteMap';
 import InfoPanel from '../components/satellite/InfoPanel';
 import SatelliteDetails from '../components/satellite/SatelliteDetails';
-import ComparisonCard from '../components/satellite/ComparisonCard';
+import RegionalObservationsTable from '../components/satellite/RegionalObservationsTable';
 import LoadingSkeleton from '../components/satellite/LoadingSkeleton';
 
 const today = new Date().toISOString().split('T')[0];
@@ -131,7 +131,7 @@ const SatelliteMonitoring = () => {
     <div className="flex flex-col min-h-full w-full">
       <PageHeader
         title="Satellite Monitoring"
-        subtitle="Compare ground sensor data with satellite-based environmental observations."
+        subtitle="Monitor satellite-based environmental observations across regions."
       />
 
       <div className="p-6 md:p-8 w-full max-w-[1600px] mx-auto space-y-6 pb-24">
@@ -292,10 +292,10 @@ const SatelliteMonitoring = () => {
               </div>
             )}
 
-            {/* ─── BOTTOM SECTION: Satellite Details + Comparison ─── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ─── BOTTOM SECTION: Satellite Details & Regional Table ─── */}
+            <div className="w-full flex flex-col gap-6">
               <SatelliteDetails latestObservation={selectedObservation || mapObservations[0]} />
-              <ComparisonCard observations={selectedObservation ? [selectedObservation] : mapObservations} />
+              <RegionalObservationsTable observations={mapObservations} />
             </div>
           </>
         )}

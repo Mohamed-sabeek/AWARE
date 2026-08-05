@@ -25,7 +25,6 @@ const observations = [
     status: 'Active',
     quality: 97,
     coordinates: { lat: 13.0827, lng: 80.2707 },
-    groundSensorAqi: 155,
   },
   {
     region: 'Coimbatore',
@@ -43,7 +42,6 @@ const observations = [
     status: 'Active',
     quality: 95,
     coordinates: { lat: 11.0168, lng: 76.9558 },
-    groundSensorAqi: 102,
   },
   {
     region: 'Madurai',
@@ -61,7 +59,6 @@ const observations = [
     status: 'Active',
     quality: 98,
     coordinates: { lat: 9.9252, lng: 78.1198 },
-    groundSensorAqi: 88,
   },
   // SO2 observations
   {
@@ -80,7 +77,6 @@ const observations = [
     status: 'Active',
     quality: 94,
     coordinates: { lat: 8.7642, lng: 78.1348 },
-    groundSensorAqi: 178,
   },
   {
     region: 'Salem',
@@ -98,7 +94,6 @@ const observations = [
     status: 'Active',
     quality: 96,
     coordinates: { lat: 11.6643, lng: 78.1460 },
-    groundSensorAqi: 122,
   },
   // CO observations
   {
@@ -117,7 +112,6 @@ const observations = [
     status: 'Active',
     quality: 99,
     coordinates: { lat: 10.7905, lng: 78.7047 },
-    groundSensorAqi: 68,
   },
   {
     region: 'Vellore',
@@ -135,7 +129,6 @@ const observations = [
     status: 'Active',
     quality: 97,
     coordinates: { lat: 12.9165, lng: 79.1325 },
-    groundSensorAqi: 51,
   },
   // Aerosol Index observations
   {
@@ -154,7 +147,6 @@ const observations = [
     status: 'Active',
     quality: 93,
     coordinates: { lat: 13.0827, lng: 80.2707 },
-    groundSensorAqi: 144,
   },
   {
     region: 'Thanjavur',
@@ -172,7 +164,6 @@ const observations = [
     status: 'Active',
     quality: 98,
     coordinates: { lat: 10.7870, lng: 79.1378 },
-    groundSensorAqi: 82,
   },
   {
     region: 'Erode',
@@ -190,7 +181,6 @@ const observations = [
     status: 'Active',
     quality: 99,
     coordinates: { lat: 11.3410, lng: 77.7172 },
-    groundSensorAqi: 73,
   },
   {
     region: 'Tirunelveli',
@@ -208,7 +198,6 @@ const observations = [
     status: 'Active',
     quality: 96,
     coordinates: { lat: 8.7139, lng: 77.7567 },
-    groundSensorAqi: 58,
   },
   {
     region: 'Kancheepuram',
@@ -226,7 +215,6 @@ const observations = [
     status: 'Active',
     quality: 100,
     coordinates: { lat: 12.8342, lng: 79.7036 },
-    groundSensorAqi: 42,
   },
 ];
 

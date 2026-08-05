@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Radio } from 'lucide-react';
 import api from '../services/api';
 import PageHeader from '../components/PageHeader';
 import SummaryCards from '../components/gis/SummaryCards';
@@ -23,6 +24,8 @@ const GISMap = () => {
 
   useEffect(() => {
     fetchSensors();
+    const interval = setInterval(fetchSensors, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchSensors = async () => {
@@ -94,6 +97,18 @@ const GISMap = () => {
           />
 
           <div className="flex-1 flex flex-col lg:flex-row gap-6 relative min-h-[500px]">
+            {sensors.length === 0 ? (
+              <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl border border-slate-200 shadow-xl text-center pointer-events-auto">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-200">
+                     <Radio className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800">No IoT devices have been deployed yet.</h3>
+                  <p className="text-slate-500 mt-2 max-w-sm mx-auto">Hardware locations and live environmental data will appear here automatically once devices register with the backend.</p>
+                </div>
+              </div>
+            ) : null}
+            
             {/* Map Area - 70% width on Desktop */}
             <LeafletMap 
               sensors={filteredSensors} 

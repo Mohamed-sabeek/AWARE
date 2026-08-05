@@ -23,6 +23,26 @@ const sensorSchema = new mongoose.Schema({
     required: true,
     default: 0
   },
+  pm25: {
+    type: Number,
+    default: 0
+  },
+  pm10: {
+    type: Number,
+    default: 0
+  },
+  mq135: {
+    type: Number,
+    default: 0
+  },
+  temperature: {
+    type: Number,
+    default: 0
+  },
+  humidity: {
+    type: Number,
+    default: 0
+  },
   status: {
     type: String,
     enum: ['Online', 'Offline', 'Maintenance'],

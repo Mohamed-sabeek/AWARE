@@ -12,6 +12,7 @@ import EvidenceManagement from './pages/EvidenceManagement';
 import ActivityLogs from './pages/ActivityLogs';
 import GISMap from './pages/GISMap';
 import SatelliteMonitoring from './pages/SatelliteMonitoring';
+import AdminAnalytics from './pages/AdminAnalytics';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
             <Route path="logs" element={<ActivityLogs />} />
             <Route path="map" element={<GISMap />} />
             <Route path="satellite" element={<SatelliteMonitoring />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
           </Route>
         </Routes>
       </BrowserRouter>
