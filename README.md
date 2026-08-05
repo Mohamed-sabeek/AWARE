@@ -101,9 +101,10 @@ The AWARE project is natively configured for dual-environment deployments (Local
 1. Fork or push your code to GitHub.
 2. Create a new **Web Service** on Render and point it to the `server/` directory.
 3. Configure the **Environment Variables**:
-   - `PORT=5009`
    - `MONGO_URI`
    - `JWT_SECRET`
+   - `NODE_ENV=production`
+   - `FRONTEND_URL=https://<your-vercel-url>.vercel.app`
    - Cloudinary & CDSE Credentials
 4. Run `npm install` and start with `npm start`.
 

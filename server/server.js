@@ -28,7 +28,7 @@ const io = new Server(server, {
 
 const allowedOrigins = [
   'http://localhost:5183',
-  'https://YOUR-VERCEL-DOMAIN.vercel.app'
+  process.env.FRONTEND_URL
 ];
 
 app.use(cors({
@@ -54,6 +54,14 @@ app.use('/api/activity-logs', activityLogRoutes);
 
 app.get('/', (req, res) => {
   res.send('AWARE API is running...');
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    database: 'connected',
+    time: new Date().toISOString()
+  });
 });
 
 // Mock Socket.io connection for dashboard live data simulation
