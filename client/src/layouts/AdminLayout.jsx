@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/dashboard-logo.png';
@@ -33,6 +33,12 @@ const navItems = [
 const AdminLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/', { replace: true });
+  };
   const currentNav = navItems.find(item => location.pathname.startsWith(item.path));
   const pageTitle = currentNav ? currentNav.label : 'Dashboard';
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -195,7 +201,7 @@ const AdminLayout = () => {
           {/* Logout */}
           <div className="relative group">
             <button
-              onClick={logout}
+              onClick={handleLogout}
               aria-label="Logout"
               className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-red-500 hover:text-red-600 hover:bg-red-50/50 transition-colors relative z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
             >

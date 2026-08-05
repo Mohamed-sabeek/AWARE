@@ -14,13 +14,13 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login, user, loading } = useAuth();
 
   useEffect(() => {
-    if (user && user.role === 'admin') {
+    if (!loading && user && user.role === 'admin') {
       navigate('/admin/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
