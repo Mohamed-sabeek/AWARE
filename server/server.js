@@ -23,9 +23,11 @@ if (!process.env.FRONTEND_URL) {
   console.warn('WARNING: FRONTEND_URL environment variable is not set.');
 }
 
+const frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, '') : undefined;
+
 const allowedOrigins = [
   'http://localhost:5183',
-  process.env.FRONTEND_URL
+  frontendUrl
 ].filter(Boolean);
 
 const io = new Server(server, {
