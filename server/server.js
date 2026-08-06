@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
+import { startSensorMonitor } from './services/sensorMonitor.js';
 import authRoutes from './routes/authRoutes.js';
 import evidenceRoutes from './routes/evidenceRoutes.js';
 import sensorRoutes from './routes/sensorRoutes.js';
@@ -16,6 +17,9 @@ dotenv.config();
 
 // Connect to Database
 connectDB();
+
+// Start background services
+startSensorMonitor();
 
 const app = express();
 const server = http.createServer(app);

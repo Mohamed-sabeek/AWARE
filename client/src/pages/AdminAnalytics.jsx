@@ -131,11 +131,7 @@ const AdminAnalytics = () => {
                 className="bg-white border border-[#DCEEFF] rounded-xl px-4 py-2 text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="aqi">AQI</option>
-                <option value="pm25">PM2.5</option>
-                <option value="pm10">PM10</option>
                 <option value="mq135">MQ135 Gas</option>
-                <option value="temperature">Temperature</option>
-                <option value="humidity">Humidity</option>
               </select>
             </div>
             <PollutionTrendChart data={trends} activeMetric={activeMetric} />

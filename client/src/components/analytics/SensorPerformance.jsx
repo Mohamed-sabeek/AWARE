@@ -55,12 +55,8 @@ const MetricCard = ({ title, data, unit, color }) => {
 
 const SensorPerformance = ({ sensors }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      <MetricCard title="PM2.5 Sensor" data={sensors?.pm25} unit="µg/m³" color="red" />
-      <MetricCard title="PM10 Sensor" data={sensors?.pm10} unit="µg/m³" color="orange" />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <MetricCard title="MQ135 Gas" data={sensors?.mq135} unit="PPM" color="purple" />
-      <MetricCard title="Temperature" data={sensors?.temperature} unit="°C" color="pink" />
-      <MetricCard title="Humidity" data={sensors?.humidity} unit="%" color="emerald" />
     </div>
   );
 };
