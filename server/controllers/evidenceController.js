@@ -1,4 +1,5 @@
 import Evidence from '../models/Evidence.js';
+import Sensor from '../models/Sensor.js';
 import cloudinary from '../config/cloudinary.js';
 import ActivityLog from '../models/ActivityLog.js';
 
@@ -154,3 +155,107 @@ export const deleteEvidence = async (req, res) => {
     res.status(500).json({ message: 'Server Error' });
   }
 };
+
+// @desc    Upload real ESP32-CAM JPEG image & create Evidence record
+// @route   POST /api/evidence/upload
+// @access  Public (Hardware Ingestion)
+export const uploadEvidenceFromDevice = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded. Expected field: image'
+      });
+    }
+
+    const { deviceId, sensorId, voltage, timestamp, detectionType, location } = req.body;
+    const targetDeviceId = (deviceId || sensorId || 'ESP32-CAM-001').trim();
+    const parsedVoltage = voltage !== undefined && voltage !== '' ? Number(voltage) : 0;
+
+    let readingTimestamp = new Date();
+    if (timestamp) {
+      const parsedTime = new Date(timestamp);
+      if (!isNaN(parsedTime.getTime())) {
+        readingTimestamp = parsedTime;
+      }
+    }
+
+    // Find device to pull location / metadata
+    const sensor = await Sensor.findOne({ sensorId: targetDeviceId });
+    const threshold = sensor?.threshold !== undefined ? sensor.threshold : 0.400;
+    const isThresholdExceeded = parsedVoltage >= threshold;
+
+    const evidenceId = `EVT-${Date.now()}`;
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    const evidence = await Evidence.create({
+      evidenceId,
+      imageUrl,
+      cloudinaryPublicId: '',
+      voltage: parsedVoltage,
+      detectionType: detectionType || (isThresholdExceeded ? 'Threshold Exceeded' : 'Monitoring Snapshot'),
+      aqi: 0,
+      confidence: 95,
+      location: location || sensor?.location || 'ESP32 Station',
+      latitude: sensor?.latitude || 0,
+      longitude: sensor?.longitude || 0,
+      sensorId: targetDeviceId,
+      cameraId: targetDeviceId,
+      status: 'Verified',
+      createdAt: readingTimestamp
+    });
+
+    // Create ActivityLog entry
+    await ActivityLog.create({
+      deviceName: sensor?.location || 'ESP32-CAM',
+      deviceId: targetDeviceId,
+      category: 'Evidence',
+      severity: isThresholdExceeded ? 'Critical' : 'Success',
+      description: `Visual evidence captured: ${evidence.evidenceId} (Voltage: ${parsedVoltage.toFixed(3)} V)`,
+      location: evidence.location,
+      metadata: {
+        evidenceId: evidence.evidenceId,
+        voltage: parsedVoltage,
+        imageUrl: evidence.imageUrl
+      }
+    });
+
+    // Broadcast real-time Socket.io event
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('evidence-captured', {
+        evidenceId: evidence.evidenceId,
+        imageUrl: evidence.imageUrl,
+        deviceId: targetDeviceId,
+        voltage: parsedVoltage,
+        detectionType: evidence.detectionType,
+        location: evidence.location,
+        status: evidence.status,
+        createdAt: evidence.createdAt
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Evidence uploaded successfully',
+      data: {
+        evidenceId: evidence.evidenceId,
+        imageUrl: evidence.imageUrl,
+        deviceId: targetDeviceId,
+        voltage: parsedVoltage,
+        detectionType: evidence.detectionType,
+        status: evidence.status,
+        timestamp: evidence.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in uploadEvidenceFromDevice:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error while uploading evidence',
+      error: error.message
+    });
+  }
+};
+

@@ -1,179 +1,389 @@
-import React, { useState, useEffect } from 'react';
-import { Globe, Radio, AlertTriangle, Camera as CameraIcon, Mail, Activity, WifiOff } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  Activity, 
+  Radio, 
+  AlertTriangle, 
+  Camera as CameraIcon, 
+  WifiOff, 
+  RefreshCw 
+} from 'lucide-react';
 import api from '../services/api';
+import { getSocket } from '../services/socket';
 import PageHeader from '../components/PageHeader';
 import PremiumSummaryCard from '../components/ui/PremiumSummaryCard';
-import { LatestSensorWidget, LatestAlertWidget, LatestEvidenceWidget, DeviceOverviewWidget } from '../components/dashboard/DashboardWidgets';
+import { 
+  ThresholdCard, 
+  SensorReadingGraph, 
+  SensorStatusCard 
+} from '../components/dashboard/DashboardWidgets';
+
+const formatTimeLabel = (timestamp) => {
+  if (!timestamp) return '';
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit', 
+    hour12: true 
+  });
+};
 
 const DashboardSkeleton = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {[...Array(6)].map((_, i) => (
-      <div key={i} className="min-h-[190px] bg-white/40 backdrop-blur-md rounded-[24px] border border-[#E2F0FF] p-6 animate-pulse">
-        <div className="flex justify-between items-start mb-6">
-          <div className="w-12 h-12 rounded-[18px] bg-slate-200" />
-          <div className="w-16 h-6 rounded-full bg-slate-200" />
+  <div className="space-y-8 animate-pulse">
+    <div className="h-[360px] bg-white rounded-[24px] border border-[#DCEEFF]" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="min-h-[180px] bg-white rounded-[24px] border border-[#DCEEFF] p-6">
+          <div className="w-10 h-10 bg-slate-200 rounded-xl mb-4" />
+          <div className="w-24 h-4 bg-slate-200 rounded mb-2" />
+          <div className="w-16 h-8 bg-slate-200 rounded" />
         </div>
-        <div className="w-32 h-4 bg-slate-200 rounded mb-2" />
-        <div className="w-16 h-10 bg-slate-200 rounded mb-6" />
-        <div className="w-full h-1.5 bg-slate-200 rounded-full" />
-      </div>
-    ))}
+      ))}
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="h-72 bg-white rounded-[24px] border border-[#DCEEFF]" />
+      <div className="h-72 bg-white rounded-[24px] border border-[#DCEEFF]" />
+    </div>
   </div>
 );
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [liveSensor, setLiveSensor] = useState(null);
+  const [graphData, setGraphData] = useState([]);
+  const [latestAlert, setLatestAlert] = useState(null);
+  const [latestEvidence, setLatestEvidence] = useState(null);
+  const [evidenceCount, setEvidenceCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState('CONNECTING'); // 'LIVE' | 'CONNECTING' | 'DISCONNECTED'
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [graphLoading, setGraphLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [graphError, setGraphError] = useState(null);
 
-  const fetchDashboardStats = async () => {
+  const TARGET_DEVICE_ID = 'ESP32-CAM-001';
+
+  // 1. Fetch initial data from MongoDB via backend REST endpoints
+  const fetchDashboardData = useCallback(async () => {
     try {
-      const response = await api.get('/dashboard');
-      setStats(response.data);
-      setError(false);
+      setLoading(true);
+      setError(null);
+
+      // Fetch dashboard overview, sensor metadata, and historical graph points in parallel
+      const [dashboardRes, sensorsRes, historyRes] = await Promise.allSettled([
+        api.get('/dashboard'),
+        api.get('/sensors'),
+        api.get(`/sensors/${TARGET_DEVICE_ID}/readings?limit=50`)
+      ]);
+
+      if (dashboardRes.status === 'fulfilled') {
+        const stats = dashboardRes.value.data;
+        setDashboardStats(stats);
+        if (stats?.latestAlert) {
+          setLatestAlert(stats.latestAlert);
+        }
+        if (stats?.latestEvidence) {
+          setLatestEvidence(stats.latestEvidence);
+        }
+        if (stats?.evidenceCount !== undefined) {
+          setEvidenceCount(stats.evidenceCount);
+        }
+      }
+
+      if (sensorsRes.status === 'fulfilled') {
+        const sensorsList = sensorsRes.value.data || [];
+        const targetSensor = sensorsList.find(s => s.sensorId === TARGET_DEVICE_ID) || sensorsList[0] || null;
+        if (targetSensor) {
+          setLiveSensor(targetSensor);
+        }
+      }
+
+      if (historyRes.status === 'fulfilled') {
+        const rawReadings = historyRes.value.data?.data || [];
+        // Parse and sort chronologically by numeric timestamp ascending
+        const validReadings = rawReadings
+          .map(r => {
+            const d = new Date(r.timestamp);
+            return {
+              timeValue: d.getTime(),
+              time: formatTimeLabel(r.timestamp),
+              voltage: typeof r.voltage === 'number' ? r.voltage : parseFloat(r.voltage) || 0,
+              timestamp: r.timestamp
+            };
+          })
+          .filter(r => !isNaN(r.timeValue))
+          .sort((a, b) => a.timeValue - b.timeValue);
+
+        setGraphData(validReadings);
+        setGraphError(null);
+      } else {
+        setGraphError('Unable to load historical readings');
+      }
+
+      if (dashboardRes.status === 'rejected' && sensorsRes.status === 'rejected') {
+        setError('Unable to load sensor data from backend');
+      }
     } catch (err) {
-      console.error('Failed to fetch dashboard stats', err);
-      setError(true);
+      console.error('Failed to fetch dashboard data:', err);
+      setError('Unable to load sensor data');
     } finally {
       setLoading(false);
+      setGraphLoading(false);
     }
-  };
+  }, [TARGET_DEVICE_ID]);
 
   useEffect(() => {
-    fetchDashboardStats();
-    // Poll every 15 seconds for real-time updates
-    const interval = setInterval(fetchDashboardStats, 15000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // 2. Real-time Socket.io Subscription
+  useEffect(() => {
+    const socket = getSocket();
+
+    // Connection lifecycle handlers
+    const onConnect = () => {
+      setConnectionStatus('LIVE');
+    };
+
+    const onDisconnect = () => {
+      setConnectionStatus('DISCONNECTED');
+    };
+
+    const onConnectError = () => {
+      setConnectionStatus('DISCONNECTED');
+    };
+
+    if (socket.connected) {
+      setConnectionStatus('LIVE');
+    } else {
+      setConnectionStatus('CONNECTING');
+    }
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
+
+    // Incoming real-time sensor reading
+    const onSensorReading = (data) => {
+      if (!data) return;
+      const incomingDeviceId = data.deviceId || data.sensorId;
+      if (incomingDeviceId !== TARGET_DEVICE_ID) return;
+
+      const newVoltage = typeof data.voltage === 'number' ? data.voltage : parseFloat(data.voltage) || 0;
+      const newThreshold = data.threshold !== undefined ? data.threshold : (liveSensor?.threshold || 0.400);
+      const newTimestamp = data.timestamp || new Date().toISOString();
+      const newDate = new Date(newTimestamp);
+      const newTimeVal = newDate.getTime();
+      if (isNaN(newTimeVal)) return;
+
+      // Update current sensor state in state
+      setLiveSensor(prev => ({
+        ...(prev || {}),
+        sensorId: incomingDeviceId,
+        voltage: newVoltage,
+        threshold: newThreshold,
+        status: 'Online',
+        lastUpdated: newTimestamp
+      }));
+
+      // Append new point to graph (keep latest 50 points, sort chronologically by timeValue)
+      setGraphData(prev => {
+        const newPoint = {
+          timeValue: newTimeVal,
+          time: formatTimeLabel(newTimestamp),
+          voltage: newVoltage,
+          timestamp: newTimestamp
+        };
+        
+        // Avoid duplicate push if timestamp or timeValue matches an existing point
+        if (prev.some(p => p.timestamp === newTimestamp || p.timeValue === newTimeVal)) {
+          return prev;
+        }
+
+        const updated = [...prev, newPoint].sort((a, b) => a.timeValue - b.timeValue);
+        return updated.slice(-50);
+      });
+    };
+
+    // Incoming threshold breach alert
+    const onSensorAlert = (data) => {
+      if (!data) return;
+      const incomingDeviceId = data.deviceId || data.sensorId;
+      if (incomingDeviceId !== TARGET_DEVICE_ID) return;
+
+      setLatestAlert({
+        severity: data.severity || 'Critical',
+        message: data.message || `Gas sensor voltage (${data.voltage} V) reached threshold (${data.threshold} V).`,
+        timestamp: data.timestamp || new Date().toISOString(),
+        voltage: data.voltage,
+        threshold: data.threshold,
+        deviceId: incomingDeviceId,
+        status: 'Active'
+      });
+    };
+
+    // Incoming visual evidence capture
+    const onEvidenceCaptured = (data) => {
+      if (!data) return;
+      setLatestEvidence(data);
+      setEvidenceCount(prev => prev + 1);
+    };
+
+    socket.on('sensor-reading', onSensorReading);
+    socket.on('sensor-alert', onSensorAlert);
+    socket.on('evidence-captured', onEvidenceCaptured);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+      socket.off('sensor-reading', onSensorReading);
+      socket.off('sensor-alert', onSensorAlert);
+      socket.off('evidence-captured', onEvidenceCaptured);
+    };
+  }, [TARGET_DEVICE_ID, liveSensor?.threshold]);
+
+  // Derived values for components
+  const currentVoltage = liveSensor?.voltage !== undefined 
+    ? liveSensor.voltage 
+    : (dashboardStats?.latestReading?.voltage !== undefined ? dashboardStats.latestReading.voltage : 0);
+
+  const threshold = liveSensor?.threshold !== undefined 
+    ? liveSensor.threshold 
+    : 0.400;
+
+  const deviceId = liveSensor?.sensorId || TARGET_DEVICE_ID;
+  const isAlert = currentVoltage >= threshold;
+  const status = isAlert ? 'ALERT' : 'NORMAL';
+  const isOnline = liveSensor?.status ? liveSensor.status.toLowerCase() === 'online' : true;
+  const lastUpdated = liveSensor?.lastUpdated || dashboardStats?.latestReading?.timestamp || dashboardStats?.lastUpdated;
+
+  const onlineCount = dashboardStats?.onlineDevices !== undefined ? dashboardStats.onlineDevices : (liveSensor ? 1 : 0);
+  const totalCount = dashboardStats?.totalDevices !== undefined ? dashboardStats.totalDevices : (liveSensor ? 1 : 0);
+  const activeAlertsCount = dashboardStats?.activeAlerts !== undefined ? dashboardStats.activeAlerts : (isAlert ? 1 : 0);
+  const totalEvidenceCount = evidenceCount || dashboardStats?.evidenceCount || 0;
 
   return (
     <div className="flex flex-col h-full w-full">
+      {/* Top Header */}
       <PageHeader 
         title="Dashboard"
-        description="Monitor your environmental monitoring platform in real time."
+        description="Live environmental gas sensor monitoring & automated visual surveillance platform."
       />
-      
-      {error && (
-        <div className="mx-6 md:mx-8 lg:mx-10 mt-4 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 flex items-center gap-3 text-sm font-semibold shadow-sm">
-          <WifiOff className="w-5 h-5" />
-          Failed to sync live data. Retrying in background...
-        </div>
-      )}
 
-      <div className="p-6 md:p-8 lg:p-10 w-full max-w-7xl mx-auto pb-24">
-        <div className="space-y-8">
-          
-          {loading && !stats ? (
-            <DashboardSkeleton />
-          ) : (
-            <>
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <PremiumSummaryCard 
-                  title="Average AQI" 
-                  value={stats?.averageAQI === null ? '--' : stats?.averageAQI} 
-                  total={500} 
-                  trendVal={stats?.averageAQI === null ? '0' : 'Live'}
-                  trendDir="none"
-                  trendPeriod="today"
-                  statusText={stats?.averageAQI === null ? 'Waiting' : 'Live Sync'}
-                  icon={Globe} 
-                  themeColor="#8b5cf6" 
-                  gradientBg="from-purple-50/40 to-transparent"
-                  delay={0.1}
-                  percentageOverride={stats?.averageAQI === null ? 0 : (stats.averageAQI / 500) * 100}
-                />
-                <PremiumSummaryCard 
-                  title="Online Sensors" 
-                  value={stats?.onlineDevices || 0} 
-                  total={stats?.totalDevices || 0} 
-                  trendVal={`${stats?.offlineDevices || 0} offline`}
-                  trendDir={stats?.offlineDevices > 0 ? 'down' : 'up'}
-                  trendPeriod=""
-                  statusText={stats?.totalDevices === 0 ? 'Waiting' : 'Connected'}
-                  icon={Radio} 
-                  themeColor="#10b981" 
-                  gradientBg="from-emerald-50/40 to-transparent"
-                  delay={0.15}
-                />
-                <PremiumSummaryCard 
-                  title="Active Alerts" 
-                  value={stats?.activeAlerts || 0} 
-                  total={stats?.activeAlerts || 0} // just for UI progress
-                  trendVal={stats?.activeAlerts > 0 ? 'Action needed' : 'All clear'}
-                  trendDir={stats?.activeAlerts > 0 ? 'down' : 'up'}
-                  trendPeriod=""
-                  statusText={stats?.activeAlerts > 0 ? 'High Priority' : 'Safe'}
-                  icon={AlertTriangle} 
-                  themeColor="#ef4444" 
-                  gradientBg="from-red-50/40 to-transparent"
-                  delay={0.2}
-                  percentageOverride={stats?.activeAlerts > 0 ? 100 : 0}
-                />
-                
-                <PremiumSummaryCard 
-                  title="Evidence Captured" 
-                  value={stats?.evidenceCount || 0} 
-                  total={stats?.evidenceCount || 0} 
-                  trendVal="Today"
-                  trendDir="up"
-                  trendPeriod=""
-                  statusText="Synced"
-                  icon={CameraIcon} 
-                  themeColor="#0ea5e9" 
-                  gradientBg="from-sky-50/40 to-transparent"
-                  delay={0.25}
-                  percentageOverride={stats?.evidenceCount > 0 ? 100 : 0}
-                />
-                <PremiumSummaryCard 
-                  title="Emails Sent" 
-                  value={0} // Notifications are not fully implemented yet, but keeping this as 0 count is safe
-                  total={0} 
-                  trendVal="0"
-                  trendDir="none"
-                  trendPeriod="today"
-                  statusText="Delivered"
-                  icon={Mail} 
-                  themeColor="#f59e0b" 
-                  gradientBg="from-amber-50/40 to-transparent"
-                  delay={0.3}
-                />
-                <PremiumSummaryCard 
-                  title="System Health" 
-                  value={stats?.systemHealthPercentage || 100} 
-                  decimals={0}
-                  total={100} 
-                  trendVal="Live"
-                  trendDir={stats?.systemHealth === 'Healthy' ? 'up' : 'down'}
-                  trendPeriod=""
-                  statusText={stats?.systemHealth || 'Unknown'}
-                  icon={Activity} 
-                  themeColor={stats?.systemHealth === 'Healthy' ? '#3b82f6' : stats?.systemHealth === 'Warning' ? '#f59e0b' : '#ef4444'} 
-                  gradientBg="from-blue-50/40 to-transparent"
-                  delay={0.35}
-                  percentageOverride={stats?.systemHealthPercentage || 100}
-                />
-              </div>
+      {/* Main Container */}
+      <div className="p-6 md:p-8 lg:p-10 w-full max-w-7xl mx-auto pb-24 space-y-8">
+        
+        {/* Error Notification Banner */}
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-3">
+              <WifiOff className="w-5 h-5 text-red-500 shrink-0" />
+              <span className="text-sm font-semibold">{error}</span>
+            </div>
+            <button 
+              onClick={fetchDashboardData}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-xl text-xs font-bold transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Retry
+            </button>
+          </div>
+        )}
 
-              {/* Detailed Overview Widgets */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-                <div className="lg:col-span-1">
-                  <LatestSensorWidget data={stats?.latestReading} />
-                </div>
-                <div className="lg:col-span-1">
-                  <LatestAlertWidget data={stats?.latestAlert} />
-                </div>
-                <div className="lg:col-span-1">
-                  <LatestEvidenceWidget data={stats?.latestEvidence} />
-                </div>
-                <div className="lg:col-span-1">
-                  <DeviceOverviewWidget stats={stats} />
-                </div>
-              </div>
-            </>
-          )}
+        {loading && !dashboardStats && !liveSensor ? (
+          <DashboardSkeleton />
+        ) : (
+          <>
+            {/* =======================================================
+                1. SENSOR READING GRAPH (ABOVE SUMMARY CARDS)
+               ======================================================= */}
+            <section aria-label="Sensor Reading Graph">
+              <SensorReadingGraph 
+                data={graphData}
+                threshold={threshold}
+                loading={graphLoading}
+                error={graphError}
+              />
+            </section>
 
-        </div>
+            {/* =======================================================
+                2. FOUR SUMMARY CARDS
+               ======================================================= */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <PremiumSummaryCard 
+                title="Current Reading" 
+                value={currentVoltage} 
+                decimals={3}
+                total={threshold} 
+                trendVal={isAlert ? "Threshold Exceeded" : "Normal (Safe)"}
+                trendDir={isAlert ? "down" : "up"}
+                trendPeriod=""
+                statusText={connectionStatus === 'LIVE' ? "Live Stream" : connectionStatus === 'CONNECTING' ? "Connecting" : "Offline"}
+                icon={Activity} 
+                themeColor={isAlert ? "#EF4444" : "#3B82F6"} 
+                gradientBg={isAlert ? "from-red-50/50 to-transparent" : "from-blue-50/50 to-transparent"}
+                percentageOverride={threshold > 0 ? Math.min(Math.round((currentVoltage / threshold) * 100), 100) : 0}
+              />
+              <PremiumSummaryCard 
+                title="Online Sensors" 
+                value={onlineCount} 
+                total={totalCount} 
+                trendVal={deviceId}
+                trendDir={isOnline ? "up" : "down"}
+                trendPeriod=""
+                statusText={isOnline ? "Connected" : "Offline"}
+                icon={Radio} 
+                themeColor="#10B981" 
+                gradientBg="from-emerald-50/50 to-transparent"
+                percentageOverride={totalCount > 0 ? Math.round((onlineCount / totalCount) * 100) : 0}
+              />
+              <PremiumSummaryCard 
+                title="Active Alerts" 
+                value={activeAlertsCount} 
+                total={1} 
+                trendVal={activeAlertsCount > 0 ? "Action needed" : "All Clear"}
+                trendDir={activeAlertsCount > 0 ? "down" : "none"}
+                trendPeriod=""
+                statusText={activeAlertsCount > 0 ? "Alert Active" : "Safe"}
+                icon={AlertTriangle} 
+                themeColor="#EF4444" 
+                gradientBg="from-red-50/50 to-transparent"
+                percentageOverride={activeAlertsCount > 0 ? 100 : 0}
+              />
+              <PremiumSummaryCard 
+                title="Evidence Captured" 
+                value={totalEvidenceCount} 
+                total={0} 
+                trendVal="Standby Ready"
+                trendDir="none"
+                trendPeriod=""
+                statusText="Standby"
+                icon={CameraIcon} 
+                themeColor="#8B5CF6" 
+                gradientBg="from-purple-50/50 to-transparent"
+                percentageOverride={0}
+              />
+            </div>
+
+            {/* =======================================================
+                3. THRESHOLD CONFIG + ESP32-CAM-001 (SENSOR STATUS)
+               ======================================================= */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ThresholdCard 
+                threshold={threshold}
+                current={currentVoltage}
+                status={status}
+              />
+              <SensorStatusCard 
+                device={deviceId}
+                status={isOnline ? "ONLINE" : "OFFLINE"}
+                reading={currentVoltage}
+                lastUpdated={lastUpdated}
+              />
+            </div>
+          </>
+        )}
+
       </div>
     </div>
   );

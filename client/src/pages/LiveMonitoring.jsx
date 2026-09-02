@@ -1,23 +1,49 @@
-import React, { useEffect, useState } from 'react';
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { 
-  Globe, Radio, AlertTriangle, Activity,
-  Camera, MapPin, Clock, ShieldAlert, Cpu, 
-  Database, Server, RefreshCw, BellRing, Power,
-  CheckCircle2, AlertCircle, FileCheck, UserCheck, Shield, WifiOff
+  Radio, 
+  AlertTriangle, 
+  Activity, 
+  Camera, 
+  MapPin, 
+  Clock, 
+  ShieldAlert, 
+  Cpu, 
+  Database, 
+  Power, 
+  CheckCircle2, 
+  AlertCircle, 
+  Shield, 
+  Wifi, 
+  WifiOff, 
+  Gauge, 
+  Image as ImageIcon 
 } from 'lucide-react';
 import api from '../services/api';
+import { getSocket } from '../services/socket';
+import { getEvidenceImageUrl } from '../utils/imageUrl';
 import PageHeader from '../components/PageHeader';
 import PremiumSummaryCard from '../components/ui/PremiumSummaryCard';
 
+// =========================================================================
+// CAMERA STREAM CONFIGURATION (ESP32-CAM MJPEG STREAM)
+// =========================================================================
+const CAMERA_STREAM_URL = "http://192.168.1.19:81/stream";
+
 // Premium Glass Card Wrapper
-const GlassCard = ({ children, className = "", delay = 0, glowColor = "rgba(96, 165, 250, 0.15)", noHoverGlow = false }) => (
+const GlassCard = ({ 
+  children, 
+  className = "", 
+  delay = 0, 
+  glowColor = "rgba(96, 165, 250, 0.15)", 
+  noHoverGlow = false 
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
-    whileHover={{ y: -6, boxShadow: `0 25px 40px -10px ${glowColor}, 0 10px 20px -8px rgba(96, 165, 250, 0.1)` }}
-    className={`bg-white/90 backdrop-blur-xl rounded-[24px] border border-[#DCEEFF] p-8 shadow-[0_8px_30px_rgba(96,165,250,0.04)] transition-all overflow-hidden relative group flex flex-col ${className}`}
+    transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+    whileHover={{ y: -4, boxShadow: `0 20px 35px -10px ${glowColor}, 0 8px 16px -8px rgba(96, 165, 250, 0.08)` }}
+    className={`bg-white/95 backdrop-blur-xl rounded-[24px] border border-[#DCEEFF] p-7 shadow-[0_8px_30px_rgba(96,165,250,0.04)] transition-all overflow-hidden relative group flex flex-col ${className}`}
   >
     <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none z-0" />
     {!noHoverGlow && (
@@ -29,375 +55,566 @@ const GlassCard = ({ children, className = "", delay = 0, glowColor = "rgba(96, 
 
 const LiveMonitoringSkeleton = () => (
   <div className="w-full space-y-8 animate-pulse">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-40 bg-white/40 rounded-[24px] border border-[#E2F0FF]"></div>
+        <div key={i} className="h-40 bg-white/60 rounded-[24px] border border-[#E2F0FF]" />
       ))}
     </div>
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-      <div className="xl:col-span-2 h-[580px] bg-slate-800/40 rounded-[32px]"></div>
-      <div className="xl:col-span-1 h-[580px] bg-white/40 rounded-[24px] border border-[#E2F0FF]"></div>
+      <div className="xl:col-span-2 h-[560px] bg-slate-800/40 rounded-[32px]" />
+      <div className="xl:col-span-1 h-[560px] bg-white/60 rounded-[24px] border border-[#E2F0FF]" />
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-64 bg-white/40 rounded-[24px] border border-[#E2F0FF]"></div>
+        <div key={i} className="h-64 bg-white/60 rounded-[24px] border border-[#E2F0FF]" />
       ))}
     </div>
   </div>
 );
 
-const LiveMonitoring = () => {
-  const [stats, setStats] = useState(null);
-  const [sensors, setSensors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+const formatBackendTimestamp = (timestamp) => {
+  if (!timestamp) return 'Standby';
+  const d = new Date(timestamp);
+  return isNaN(d.getTime()) ? 'Standby' : d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+};
 
-  const fetchData = async () => {
+const LiveMonitoring = () => {
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [liveSensor, setLiveSensor] = useState(null);
+  const [sensors, setSensors] = useState([]);
+  const [latestEvidence, setLatestEvidence] = useState(null);
+  const [imageError, setImageError] = useState(false);
+  const [streamError, setStreamError] = useState(false);
+  const [streamLoaded, setStreamLoaded] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('CONNECTING'); // 'LIVE' | 'CONNECTING' | 'DISCONNECTED'
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const TARGET_DEVICE_ID = 'ESP32-CAM-001';
+
+  // 1. Initial Data Fetch from Backend REST endpoints (Reuses proven Dashboard logic)
+  const fetchMonitoringData = useCallback(async () => {
     try {
-      const [dashRes, sensRes] = await Promise.all([
+      setLoading(true);
+      setError(null);
+
+      const [dashboardRes, sensorsRes, evidenceRes] = await Promise.allSettled([
         api.get('/dashboard'),
-        api.get('/sensors')
+        api.get('/sensors'),
+        api.get('/evidence?limit=1')
       ]);
-      setStats(dashRes.data);
-      setSensors(sensRes.data);
-      setError(false);
+
+      if (dashboardRes.status === 'fulfilled') {
+        const stats = dashboardRes.value.data;
+        setDashboardStats(stats);
+        if (stats?.latestEvidence) {
+          setLatestEvidence(stats.latestEvidence);
+          setImageError(false);
+        }
+      }
+
+      if (evidenceRes.status === 'fulfilled') {
+        const eData = evidenceRes.value.data?.data || evidenceRes.value.data || [];
+        if (Array.isArray(eData) && eData.length > 0) {
+          setLatestEvidence(eData[0]);
+          setImageError(false);
+        }
+      }
+
+      if (sensorsRes.status === 'fulfilled') {
+        const rawList = sensorsRes.value.data || [];
+        // Deduplicate devices by normalized sensorId
+        const uniqueSensors = [];
+        const seen = new Set();
+        for (const s of rawList) {
+          const normId = (s.sensorId || '').replace(/_/g, '-');
+          if (!seen.has(normId)) {
+            seen.add(normId);
+            uniqueSensors.push(s);
+          }
+        }
+        setSensors(uniqueSensors);
+
+        const targetSensor = rawList.find(s => s.sensorId === TARGET_DEVICE_ID) || rawList[0] || null;
+        if (targetSensor) {
+          setLiveSensor(targetSensor);
+        }
+      }
+
+      if (dashboardRes.status === 'rejected' && sensorsRes.status === 'rejected') {
+        setError('Unable to load sensor data from backend');
+      }
     } catch (err) {
-      console.error('Failed to fetch live monitoring data', err);
-      setError(true);
+      console.error('Failed to fetch live monitoring data:', err);
+      setError('Unable to load sensor data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [TARGET_DEVICE_ID]);
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10000);
-    const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => { clearInterval(interval); clearInterval(timeInterval); };
-  }, []);
+    fetchMonitoringData();
+  }, [fetchMonitoringData]);
 
-  const latestAlert = stats?.latestAlert;
+  // 2. Real-Time Socket.io Integration (Reuses proven Dashboard subscription)
+  useEffect(() => {
+    const socket = getSocket();
+
+    const onConnect = () => {
+      setConnectionStatus('LIVE');
+    };
+
+    const onDisconnect = () => {
+      setConnectionStatus('DISCONNECTED');
+    };
+
+    const onConnectError = () => {
+      setConnectionStatus('DISCONNECTED');
+    };
+
+    if (socket.connected) {
+      setConnectionStatus('LIVE');
+    } else {
+      setConnectionStatus('CONNECTING');
+    }
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
+
+    // Incoming real-time sensor reading (~1s from ESP32)
+    const onSensorReading = (data) => {
+      if (!data) return;
+      const incomingDeviceId = data.deviceId || data.sensorId;
+      if (incomingDeviceId !== TARGET_DEVICE_ID) return;
+
+      const newVoltage = typeof data.voltage === 'number' ? data.voltage : parseFloat(data.voltage) || 0;
+      const newThreshold = data.threshold !== undefined ? data.threshold : (liveSensor?.threshold || 0.400);
+      const newTimestamp = data.timestamp || new Date().toISOString();
+
+      // Immediately update current sensor state with exact backend timestamp
+      setLiveSensor(prev => ({
+        ...(prev || {}),
+        sensorId: incomingDeviceId,
+        voltage: newVoltage,
+        threshold: newThreshold,
+        status: 'Online',
+        lastUpdated: newTimestamp
+      }));
+
+      // Update matching sensor in device list
+      setSensors(prev => prev.map(s => {
+        if (s.sensorId === incomingDeviceId) {
+          return {
+            ...s,
+            voltage: newVoltage,
+            status: 'Online',
+            lastUpdated: newTimestamp
+          };
+        }
+        return s;
+      }));
+    };
+
+    // Incoming visual evidence capture from ESP32-CAM
+    const onEvidenceCaptured = (data) => {
+      if (!data) return;
+      setLatestEvidence(data);
+      setImageError(false);
+    };
+
+    socket.on('sensor-reading', onSensorReading);
+    socket.on('evidence-captured', onEvidenceCaptured);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
+      socket.off('sensor-reading', onSensorReading);
+      socket.off('evidence-captured', onEvidenceCaptured);
+    };
+  }, [TARGET_DEVICE_ID, liveSensor?.threshold]);
+
+  // Derived Realtime Values (Threshold: 0.400 V)
+  const currentVoltage = liveSensor?.voltage !== undefined 
+    ? liveSensor.voltage 
+    : (dashboardStats?.latestReading?.voltage !== undefined ? dashboardStats.latestReading.voltage : 0);
+
+  const threshold = liveSensor?.threshold !== undefined 
+    ? liveSensor.threshold 
+    : 0.400;
+
+  const deviceId = liveSensor?.sensorId || TARGET_DEVICE_ID;
+  const isAlert = currentVoltage >= threshold;
+  const status = isAlert ? 'ALERT' : 'NORMAL';
+  const isOnline = liveSensor?.status ? liveSensor.status.toLowerCase() === 'online' : true;
+  const locationLabel = liveSensor?.location || 'ESP32 Station';
+
+  const hasRealEvidence = Boolean(latestEvidence && latestEvidence.imageUrl);
+  const evidenceImageUrl = hasRealEvidence ? getEvidenceImageUrl(latestEvidence.imageUrl) : '';
+  const lastSyncTime = formatBackendTimestamp(liveSensor?.lastUpdated);
+  const evidenceTimeFormatted = formatBackendTimestamp(latestEvidence?.createdAt || latestEvidence?.timestamp);
   
-  // Find a camera sensor if it exists
-  const cameraNode = sensors.find(s => s.cameraId && s.cameraId !== 'None') || null;
+  const evidenceVoltageVal = latestEvidence?.voltage !== undefined 
+    ? `${Number(latestEvidence.voltage).toFixed(3)} V` 
+    : (latestEvidence?.metadata?.voltage !== undefined ? `${Number(latestEvidence.metadata.voltage).toFixed(3)} V` : `${currentVoltage.toFixed(3)} V`);
 
   return (
     <div className="flex flex-col h-full w-full">
       <PageHeader 
         title="Live Monitoring"
-        description="Monitor live sensors, camera feeds, and AI detections."
+        description="Real-time gas sensor surveillance, camera uplink status, and automated threshold alerts."
       />
       
       {error && (
-        <div className="mx-8 mt-4 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 flex items-center gap-3 text-sm font-semibold shadow-sm w-max">
+        <div className="mx-8 mt-4 p-4 bg-red-50 text-red-600 rounded-2xl border border-red-200 flex items-center gap-3 text-sm font-semibold shadow-sm w-max">
           <WifiOff className="w-5 h-5" />
-          Failed to sync live data. Retrying in background...
+          {error}
         </div>
       )}
 
       <div className="p-8 w-full max-w-[1600px] mx-auto space-y-8 font-sans pb-24">
 
-      {loading && !stats ? (
+      {loading && !dashboardStats && !liveSensor ? (
         <LiveMonitoringSkeleton />
       ) : (
         <>
-          {/* SECTION 1: System Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* ========================================================= */}
+          {/* SECTION A: Current Sensor & Status Overview (No AQI)      */}
+          {/* ========================================================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* 1. CURRENT SENSOR READING */}
             <PremiumSummaryCard 
-              title="Average AQI" 
-              value={stats?.averageAQI === null ? '--' : stats?.averageAQI} 
-              total={500} 
-              trendVal="Live"
-              trendDir="none"
-              trendPeriod="today"
-              statusText={stats?.averageAQI === null ? 'Waiting' : 'Live Sync'}
-              icon={Globe} 
-              themeColor="#22c55e" 
-              gradientBg="from-green-50/40 to-transparent"
-              delay={0.1}
-              percentageOverride={stats?.averageAQI === null ? 0 : (stats.averageAQI / 500) * 100}
-            />
-            <PremiumSummaryCard 
-              title="Active Sensors" 
-              value={stats?.onlineDevices || 0} 
-              total={stats?.totalDevices || 0} 
-              trendVal={`${stats?.offlineDevices || 0} offline`}
-              trendDir={stats?.offlineDevices > 0 ? 'down' : 'up'}
+              title="Current Reading" 
+              value={`${currentVoltage.toFixed(3)} V`} 
+              total={1.0} 
+              trendVal={`Threshold: ${threshold.toFixed(3)} V`}
+              trendDir={isAlert ? 'down' : 'up'}
               trendPeriod=""
-              statusText={stats?.totalDevices === 0 ? 'Waiting' : 'Online'}
+              statusText={status}
+              icon={Gauge} 
+              themeColor={isAlert ? '#ef4444' : '#22c55e'} 
+              gradientBg={isAlert ? 'from-red-50/40 to-transparent' : 'from-emerald-50/40 to-transparent'}
+              delay={0.1}
+              percentageOverride={Math.min((currentVoltage / threshold) * 100, 100)}
+            />
+
+            {/* 2. SENSOR STATUS */}
+            <PremiumSummaryCard 
+              title="Sensor Status" 
+              value={status} 
+              total={1} 
+              trendVal={`Device: ${deviceId}`}
+              trendDir={isAlert ? 'down' : 'up'}
+              trendPeriod=""
+              statusText={isAlert ? 'BREACH ACTIVE' : 'NORMAL'}
+              icon={Activity} 
+              themeColor={isAlert ? '#ef4444' : '#10b981'} 
+              gradientBg={isAlert ? 'from-red-50/40 to-transparent' : 'from-emerald-50/40 to-transparent'}
+              delay={0.2}
+              percentageOverride={isAlert ? 100 : 0}
+            />
+
+            {/* 3. CONNECTED HARDWARE */}
+            <PremiumSummaryCard 
+              title="Connected Hardware" 
+              value={isOnline ? 1 : 0} 
+              total={1} 
+              trendVal={`Last Sync: ${lastSyncTime}`}
+              trendDir={isOnline ? 'up' : 'down'}
+              trendPeriod=""
+              statusText={isOnline ? 'Online' : 'Offline'}
               icon={Radio} 
               themeColor="#0ea5e9" 
               gradientBg="from-sky-50/40 to-transparent"
-              delay={0.2}
-            />
-            <PremiumSummaryCard 
-              title="Active Alerts" 
-              value={stats?.activeAlerts || 0} 
-              total={stats?.activeAlerts || 0} 
-              trendVal={stats?.activeAlerts > 0 ? 'Action needed' : 'All clear'}
-              trendDir={stats?.activeAlerts > 0 ? 'down' : 'up'}
-              trendPeriod=""
-              statusText={stats?.activeAlerts > 0 ? 'High Priority' : 'Safe'}
-              icon={AlertTriangle} 
-              themeColor="#ef4444" 
-              gradientBg="from-red-50/40 to-transparent"
               delay={0.3}
-              percentageOverride={stats?.activeAlerts > 0 ? 100 : 0}
             />
+
+            {/* 4. SOCKET.IO CONNECTION */}
             <PremiumSummaryCard 
-              title="System Health" 
-              value={stats?.systemHealthPercentage || 100}
+              title="Connection Status" 
+              value={connectionStatus === 'LIVE' ? 'LIVE SYNC' : connectionStatus}
               total={100} 
-              trendVal="Live"
-              trendDir={stats?.systemHealth === 'Healthy' ? 'up' : 'down'}
+              trendVal={connectionStatus === 'LIVE' ? 'Realtime Connected' : 'Reconnecting...'}
+              trendDir={connectionStatus === 'LIVE' ? 'up' : 'down'}
               trendPeriod=""
-              statusText={stats?.systemHealth || 'Unknown'}
-              icon={Activity} 
-              themeColor={stats?.systemHealth === 'Healthy' ? '#3b82f6' : stats?.systemHealth === 'Warning' ? '#f59e0b' : '#ef4444'}
+              statusText={connectionStatus === 'LIVE' ? 'CONNECTED' : 'DISCONNECTED'}
+              icon={connectionStatus === 'LIVE' ? Wifi : WifiOff} 
+              themeColor={connectionStatus === 'LIVE' ? '#3b82f6' : '#f59e0b'} 
               gradientBg="from-blue-50/40 to-transparent"
               delay={0.4}
-              percentageOverride={stats?.systemHealthPercentage || 100}
+              percentageOverride={connectionStatus === 'LIVE' ? 100 : 30}
             />
           </div>
 
-          {/* SECTION 2 & 3: Camera Feed and Current Incident */}
+          {/* ========================================================= */}
+          {/* SECTION B & C: Live Camera Panel & Active Incident Panel  */}
+          {/* ========================================================= */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             
-            {/* Camera Feed - The visual centerpiece */}
+            {/* LIVE CAMERA PANEL (Stream-Ready Container) */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="xl:col-span-2 relative rounded-[32px] overflow-hidden bg-[#0A111F] min-h-[580px] shadow-[0_20px_50px_rgba(15,23,42,0.3)] border border-[#1E293B]"
+              transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="xl:col-span-2 relative rounded-[32px] overflow-hidden bg-[#0A111F] min-h-[560px] shadow-[0_20px_50px_rgba(15,23,42,0.3)] border border-[#1E293B] flex flex-col justify-between"
             >
               <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] z-10" />
               
               {/* Top Info Bar */}
-              <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start z-20 bg-gradient-to-b from-[#0A111F]/90 via-[#0A111F]/40 to-transparent">
-                <div className="flex items-center gap-4">
-                  <motion.div 
-                    animate={cameraNode?.status === 'Online' ? { opacity: [0.85, 1, 0.85], scale: [1, 1.02, 1] } : {}} 
-                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                    className={`flex items-center gap-2 px-4 py-2 ${cameraNode?.status === 'Online' ? 'bg-red-500/10 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : 'bg-slate-500/10 border-slate-500/20'} backdrop-blur-xl border rounded-full`}
-                  >
-                    <span className={`w-2.5 h-2.5 rounded-full ${cameraNode?.status === 'Online' ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-slate-500'}`} />
-                    <span className={`${cameraNode?.status === 'Online' ? 'text-red-400' : 'text-slate-400'} text-[13px] font-bold tracking-widest uppercase`}>
-                      {cameraNode?.status === 'Online' ? 'Live Stream' : 'Stream Offline'}
+              <div className="w-full p-6 flex flex-wrap justify-between items-center z-20 bg-gradient-to-b from-[#0A111F]/95 via-[#0A111F]/60 to-transparent gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`flex items-center gap-2 px-4 py-2 ${connectionStatus === 'LIVE' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'} backdrop-blur-xl border rounded-full`}>
+                    <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus === 'LIVE' ? 'bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-amber-400'}`} />
+                    <span className={`text-[12px] font-bold tracking-widest uppercase ${connectionStatus === 'LIVE' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      ● LIVE CAMERA
                     </span>
-                  </motion.div>
-                  <div className="px-4 py-2 bg-[#0F172A]/60 backdrop-blur-xl border border-white/5 rounded-full flex items-center gap-2 text-white/90 text-[13px] font-medium tracking-wide uppercase">
-                    <Clock className="w-4 h-4 text-[#7DD3FC]" />
-                    {currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+                  </div>
+                  
+                  <div className="px-3.5 py-2 bg-[#0F172A]/80 backdrop-blur-xl border border-white/10 rounded-full text-white/90 text-[12px] font-mono font-semibold">
+                    {deviceId}
                   </div>
                 </div>
                 
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-3 px-4 py-2 bg-[#0F172A]/60 backdrop-blur-xl border border-white/5 rounded-full text-[12px] font-mono text-white/70">
-                    <span>RES: <span className="text-white font-bold">{cameraNode ? '4K UHD' : '--'}</span></span>
+                <div className="flex items-center gap-3">
+                  <div className="px-4 py-2 bg-[#0F172A]/80 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-2 text-white/80 text-[12px] font-mono">
+                    <Clock className="w-3.5 h-3.5 text-[#7DD3FC]" />
+                    <span>Last Sync: {lastSyncTime}</span>
+                  </div>
+                  <div className="px-3.5 py-2 bg-[#0F172A]/80 backdrop-blur-xl border border-white/10 rounded-full text-[11px] font-mono text-white/70">
+                    RES: <span className="text-white font-bold">1600x1200 UXGA</span>
                   </div>
                 </div>
               </div>
 
-              {/* Central Content Area (Perfectly Centered) */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pt-8">
-                <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'linear-gradient(#7DD3FC 1px, transparent 1px), linear-gradient(90deg, #7DD3FC 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-                
-                <div className="relative flex flex-col items-center mb-8 z-10">
-                  {cameraNode?.detectionType && cameraNode.detectionType !== 'None' && (
-                    <div className="absolute -top-10 bg-[#0EA5E9]/10 backdrop-blur-md text-[#7DD3FC] border border-[#38BDF8]/40 text-[10px] font-bold px-4 py-1.5 rounded-full tracking-widest flex items-center gap-2 shadow-[0_0_20px_rgba(14,165,233,0.15)] whitespace-nowrap">
-                      <motion.div 
-                        animate={{ opacity: [0.5, 1, 0.5] }} 
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="absolute inset-0 bg-[#38BDF8]/10 rounded-full blur-md"
-                      />
-                      <ShieldAlert className="w-3.5 h-3.5 text-[#38BDF8] z-10" />
-                      <span className="z-10">{cameraNode.detectionType.toUpperCase()} SIGNATURE DETECTED</span>
-                    </div>
-                  )}
+              {/* Central Viewfinder Area (ESP32-CAM MJPEG Stream) */}
+              <div className="relative flex-1 flex flex-col items-center justify-center p-6 md:p-8 z-10">
+                <div 
+                  className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+                  style={{ 
+                    backgroundImage: 'linear-gradient(#7DD3FC 1px, transparent 1px), linear-gradient(90deg, #7DD3FC 1px, transparent 1px)', 
+                    backgroundSize: '36px 36px' 
+                  }} 
+                />
 
-                  {/* Bounding Box */}
-                  <div className="w-[320px] h-[220px] border border-[#7DD3FC]/30 bg-[#7DD3FC]/[0.02] rounded-lg flex items-center justify-center backdrop-blur-sm relative overflow-hidden group">
-                    <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-[#38BDF8] rounded-tl-sm opacity-70" />
-                    <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-[#38BDF8] rounded-tr-sm opacity-70" />
-                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-[#38BDF8] rounded-bl-sm opacity-70" />
-                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-[#38BDF8] rounded-br-sm opacity-70" />
-                    
-                    <motion.div 
-                      animate={cameraNode?.status === 'Online' ? { opacity: [0.6, 1, 0.6] } : {}}
-                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                      className="relative flex items-center justify-center"
-                    >
-                      <Camera className="w-16 h-16 text-[#7DD3FC]/40" strokeWidth={1} />
-                      {cameraNode?.status === 'Online' && (
-                        <motion.div 
-                          animate={{ opacity: [0.2, 0.5, 0.2], scale: [1, 1.2, 1] }} 
-                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                          className="absolute inset-0 bg-[#7DD3FC] rounded-full blur-2xl -z-10"
-                        />
-                      )}
-                    </motion.div>
-                    
-                    {cameraNode?.status === 'Online' && (
-                      <motion.div 
-                        animate={{ y: [0, 220, 0] }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                        className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#7DD3FC] to-transparent opacity-30 shadow-[0_0_10px_#7DD3FC]" 
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center text-center px-6 z-10">
-                  {cameraNode?.status === 'Online' ? (
+                {/* Stream Frame Container */}
+                <div className="relative w-full max-w-[760px] aspect-video rounded-2xl overflow-hidden border border-[#7DD3FC]/30 bg-black shadow-2xl flex items-center justify-center group">
+                  {!streamError ? (
                     <>
-                      <p className="text-[#38BDF8] font-mono text-[13px] tracking-[0.2em] uppercase font-semibold mb-3 bg-[#0EA5E9]/10 px-3 py-1 rounded-full border border-[#0EA5E9]/20 inline-block">
-                        Signal Acquired
-                      </p>
-                      <h3 className="text-white/95 text-[28px] font-semibold tracking-wide shadow-sm">
-                        Waiting for ESP32-CAM Video Stream...
-                      </h3>
+                      <img 
+                        src={CAMERA_STREAM_URL} 
+                        alt="ESP32-CAM Live Stream" 
+                        className="w-full h-full object-cover"
+                        onLoad={() => setStreamLoaded(true)}
+                        onError={() => setStreamError(true)}
+                      />
+                      
+                      {/* Live HUD Corner Brackets */}
+                      <div className="absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-[#38BDF8] rounded-tl-sm pointer-events-none" />
+                      <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-[#38BDF8] rounded-tr-sm pointer-events-none" />
+                      <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-[#38BDF8] rounded-bl-sm pointer-events-none" />
+                      <div className="absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-[#38BDF8] rounded-br-sm pointer-events-none" />
+
+                      {/* Live Streaming Badge Overlay */}
+                      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 text-[10px] font-mono text-white pointer-events-none shadow-lg">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]" />
+                        <span className="font-bold tracking-wider">LIVE FEED</span>
+                      </div>
                     </>
                   ) : (
-                    <>
-                      <p className="text-slate-400 font-mono text-[13px] tracking-[0.2em] uppercase font-semibold mb-3 bg-slate-500/10 px-3 py-1 rounded-full border border-slate-500/20 inline-block">
-                        No Signal
-                      </p>
-                      <h3 className="text-white/40 text-[28px] font-semibold tracking-wide shadow-sm">
-                        Camera Offline or Not Connected
-                      </h3>
-                    </>
+                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 bg-slate-900/90">
+                      <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3">
+                        <AlertTriangle className="w-7 h-7" />
+                      </div>
+                      <h4 className="text-white font-bold text-base">Camera Stream Disconnected</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-mono">{CAMERA_STREAM_URL}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Ensure ESP32-CAM is powered on and reachable on the local network.</p>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setStreamError(false);
+                          setStreamLoaded(false);
+                        }}
+                        className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center gap-1.5"
+                      >
+                        Retry Stream Connection
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Bottom Info Bar */}
-              <div className="absolute bottom-0 left-0 w-full bg-[#0A111F]/80 backdrop-blur-xl border-t border-white/5 p-5 flex flex-wrap gap-6 items-center justify-center z-20">
-                <div className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${cameraNode?.status === 'Online' ? 'bg-[#10B981] shadow-[0_0_8px_#10B981]' : 'bg-slate-500'}`} />
-                  <span className="text-white/90 font-mono text-[13px] font-medium tracking-wider">{cameraNode?.sensorId || 'N/A'}</span>
+              <div className="w-full bg-[#0A111F]/90 backdrop-blur-xl border-t border-white/10 p-4 px-6 flex flex-wrap gap-4 items-center justify-between z-20 text-xs font-mono text-white/80">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 shadow-[0_0_8px_#34D399]' : 'bg-slate-500'}`} />
+                    <span className="text-white font-bold">{deviceId}</span>
+                  </div>
+                  <div className="h-3.5 w-px bg-white/15" />
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <MapPin className="w-3.5 h-3.5 text-[#7DD3FC]" />
+                    <span>{locationLabel}</span>
+                  </div>
+                  <div className="h-3.5 w-px bg-white/15 hidden sm:inline" />
+                  <div className="hidden sm:flex items-center gap-1.5 text-slate-300">
+                    <Cpu className="w-3.5 h-3.5 text-[#7DD3FC]" />
+                    <span>ADS1115 (16-Bit)</span>
+                  </div>
                 </div>
-                <div className="h-4 w-px bg-white/10" />
-                <div className="text-white/70 text-[13px] font-medium tracking-wide">
-                  <MapPin className="w-4 h-4 inline mr-1 text-[#7DD3FC]"/> {cameraNode?.location || '--'}
-                </div>
-                <div className="h-4 w-px bg-white/10" />
-                <div className="flex items-center gap-2 text-white/70 text-[13px] font-mono font-medium tracking-wide">
-                   <Cpu className="w-4 h-4 text-[#7DD3FC]" />
-                   AWARE-Net v2.4
-                </div>
-                <div className="flex-1" />
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest border ${cameraNode?.status === 'Online' ? 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
-                  {cameraNode?.status === 'Online' ? (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                      UPLINK STABLE
-                    </>
-                  ) : (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                      UPLINK OFFLINE
-                    </>
-                  )}
+
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider border ${connectionStatus === 'LIVE' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${connectionStatus === 'LIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                  {connectionStatus === 'LIVE' ? 'UPLINK STABLE' : connectionStatus}
                 </div>
               </div>
             </motion.div>
 
-            {/* Current Incident */}
-            <GlassCard delay={0.6} className={`xl:col-span-1 border-l-[6px] ${latestAlert ? 'border-l-orange-500' : 'border-l-green-500'} p-8 h-full flex flex-col relative overflow-hidden`}>
-              {latestAlert ? (
-                <>
-                  <div className="absolute top-0 right-0 -mr-16 -mt-16 text-orange-500/5 rotate-12">
-                    <ShieldAlert className="w-64 h-64" />
-                  </div>
-                  <div className="flex items-center justify-between mb-8 relative z-10">
-                    <h2 className="text-[24px] font-bold text-[#0F172A] tracking-tight">Active Incident</h2>
-                    <div className="px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-[12px] font-bold tracking-widest uppercase border border-red-200 shadow-sm flex items-center gap-2">
-                      <AlertCircle className="w-3 h-3" />
-                      {latestAlert.severity}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-7 relative z-10 flex-1">
-                    <div>
-                      <p className="text-[11px] text-[#64748B] font-bold uppercase tracking-widest mb-2">Detection Signature</p>
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center border border-orange-100">
-                          <ShieldAlert className="w-6 h-6 text-orange-500" />
-                        </div>
-                        <div>
-                          <h3 className="text-[#0F172A] font-bold text-[18px]">{latestAlert.type}</h3>
-                          <p className="text-[#64748B] text-[14px] font-medium mt-0.5 truncate max-w-[200px]">{latestAlert.message}</p>
-                        </div>
-                      </div>
-                    </div>
+            {/* ACTIVE INCIDENT PANEL (Always shows latest real evidence image independently) */}
+            <GlassCard 
+              delay={0.5} 
+              className={`xl:col-span-1 border-l-[6px] ${isAlert ? 'border-l-red-500' : 'border-l-emerald-500'} p-7 h-full flex flex-col relative overflow-hidden`}
+            >
+              {/* Background Glow */}
+              <div className={`absolute top-0 right-0 -mr-16 -mt-16 ${isAlert ? 'text-red-500/5' : 'text-emerald-500/5'} rotate-12 pointer-events-none`}>
+                {isAlert ? <ShieldAlert className="w-64 h-64" /> : <Shield className="w-64 h-64" />}
+              </div>
 
-                    <div className="grid grid-cols-2 gap-6 bg-[#F8FBFF] p-5 rounded-2xl border border-[#DCEEFF]">
-                      <div>
-                        <p className="text-[11px] text-[#64748B] font-bold uppercase tracking-widest mb-1">Local AQI</p>
-                        <p className="text-[#0F172A] font-bold text-[28px] tracking-tight">{latestAlert.aqiAtTime || '--'} <span className="text-[14px] font-medium text-slate-400">Recorded</span></p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] text-[#64748B] font-bold uppercase tracking-widest mb-1">Sensor</p>
-                        <p className="text-[#3B82F6] font-bold text-[18px] tracking-tight mt-1 truncate">{latestAlert.sensorId}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 text-[#3B82F6] shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-[11px] text-[#64748B] font-bold uppercase tracking-widest mb-0.5">Location</p>
-                          <p className="text-[#0F172A] font-medium text-[15px]">{latestAlert.location || '--'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <Clock className="w-5 h-5 text-[#3B82F6] shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-[11px] text-[#64748B] font-bold uppercase tracking-widest mb-0.5">Time Logged</p>
-                          <p className="text-[#0F172A] font-medium text-[15px]">{new Date(latestAlert.timestamp).toLocaleString('en-IN')}</p>
-                        </div>
-                      </div>
-                    </div>
+              {/* Panel Header */}
+              <div className="flex items-center justify-between mb-5 relative z-10">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">{isAlert ? '🚨' : '🛡️'}</span>
+                  <h2 className="text-[20px] font-black text-slate-900 tracking-tight">
+                    Active Incident
+                  </h2>
+                </div>
+                {isAlert ? (
+                  <div className="px-3 py-1 bg-red-600 text-white rounded-full text-[11px] font-black tracking-wider uppercase shadow-md animate-pulse flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    ACTIVE
                   </div>
-                  
-                  <div className="mt-8 pt-6 border-t border-[#DCEEFF] relative z-10">
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A]">
-                         <BellRing className="w-4 h-4 text-orange-500" /> Alert Dispatched
-                       </div>
-                       <div className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] col-span-2">
-                         <UserCheck className="w-4 h-4 text-[#3B82F6]" /> Assigned: Dept of Environment
-                       </div>
-                     </div>
+                ) : (
+                  <div className="px-3.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-bold tracking-wider uppercase border border-emerald-200 shadow-sm flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    CLEAR
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="absolute top-0 right-0 -mr-16 -mt-16 text-green-500/5 rotate-12">
-                    <Shield className="w-64 h-64" />
+                )}
+              </div>
+
+              {/* LATEST REAL EVIDENCE IMAGE (Always displayed if exists, even when status is CLEAR) */}
+              <div className="relative aspect-video w-full rounded-2xl bg-slate-900 border border-slate-700/80 overflow-hidden mb-5 shadow-sm group">
+                {hasRealEvidence && !imageError ? (
+                  <img 
+                    src={evidenceImageUrl} 
+                    alt="ESP32-CAM Live Evidence" 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 bg-slate-900 text-slate-400">
+                    <ImageIcon className="w-8 h-8 text-slate-600 mb-2" />
+                    <span className="text-xs font-semibold text-slate-300">
+                      {imageError ? 'Evidence image unavailable' : 'No evidence captured yet'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">
+                      {imageError ? 'Check upload path / server connection' : 'ESP32-CAM visual sensor standby'}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between mb-8 relative z-10">
-                    <h2 className="text-[24px] font-bold text-[#0F172A] tracking-tight">Active Incident</h2>
-                    <div className="px-4 py-1.5 bg-green-50 text-green-600 rounded-full text-[12px] font-bold tracking-widest uppercase border border-green-200 shadow-sm flex items-center gap-2">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Clear
-                    </div>
+                )}
+
+                {/* Overlaid watermark */}
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-2.5 flex justify-between items-center text-[10px] font-mono text-white pointer-events-none z-10">
+                  <span className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isAlert ? 'bg-red-500 animate-pulse' : (hasRealEvidence ? 'bg-emerald-400' : 'bg-slate-400')}`} />
+                    {isAlert ? 'REC: THRESHOLD BREACH' : (hasRealEvidence ? 'REC: LATEST EVIDENCE' : 'REC: STANDBY')}
+                  </span>
+                  <span>{evidenceTimeFormatted}</span>
+                </div>
+              </div>
+
+              {/* Incident / Sensor Metric Details */}
+              <div className="space-y-4 relative z-10 flex-1">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">
+                    Incident Status
+                  </span>
+                  <div className={`p-3 rounded-xl border flex items-center justify-between ${isAlert ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className={`text-sm font-bold ${isAlert ? 'text-red-700' : 'text-slate-700'}`}>
+                      {isAlert ? '🚨 Active Threshold Incident' : 'No active incident'}
+                    </span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md uppercase ${isAlert ? 'bg-red-200 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {isAlert ? 'ACTIVE' : 'CLEAR'}
+                    </span>
                   </div>
-                  <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10 text-slate-400 pb-10">
-                    <Shield className="w-16 h-16 text-slate-200 mb-4" />
-                    <p className="font-semibold text-slate-600">No active incidents</p>
-                    <p className="text-sm mt-2 max-w-[200px]">Waiting for ESP32 alerts or AI camera detections.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 font-mono">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                      Reading
+                    </span>
+                    <span className={`text-lg font-black ${isAlert ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {currentVoltage.toFixed(3)} V
+                    </span>
                   </div>
-                </>
-              )}
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Threshold</span>
+                    <span className="text-lg font-bold text-slate-700">{threshold.toFixed(3)} V</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/60">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Device</span>
+                    <span className="text-xs font-bold text-slate-800 truncate block">
+                      {latestEvidence?.sensorId || latestEvidence?.deviceId || deviceId}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/60">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Evidence Time</span>
+                    <span className="text-xs font-bold text-slate-800 truncate block">
+                      {evidenceTimeFormatted}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Panel Footer */}
+              <div className="mt-4 pt-4 border-t border-slate-100 relative z-10 flex items-center justify-between text-xs font-medium">
+                {isAlert ? (
+                  <>
+                    <span className="flex items-center gap-1.5 text-red-700">
+                      <ShieldAlert className="w-4 h-4 text-red-600" />
+                      5s Periodic Capture Active
+                    </span>
+                    <span className="font-mono text-[11px] font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-lg">
+                      STATUS: ACTIVE
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex items-center gap-1.5 text-slate-500">
+                      <Shield className="w-4 h-4 text-emerald-600" />
+                      No active threshold breach
+                    </span>
+                    <span className="font-mono text-[11px] font-bold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg">
+                      STATUS: CLEAR
+                    </span>
+                  </>
+                )}
+              </div>
             </GlassCard>
           </div>
           
-          {/* SECTION 4: Connected Devices Grid */}
+          {/* ========================================================= */}
+          {/* SECTION D: Connected Hardware Nodes (Single Real Device)  */}
+          {/* ========================================================= */}
           <div className="mt-8">
             <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Database className="w-5 h-5 text-blue-500" /> Connected Hardware Nodes
+              <Database className="w-5 h-5 text-blue-500" /> Connected Hardware Node
             </h3>
             
             {sensors.length === 0 ? (
@@ -406,23 +623,17 @@ const LiveMonitoring = () => {
                     <Power className="w-8 h-8 text-slate-400" />
                  </div>
                  <h4 className="text-lg font-bold text-slate-700">No devices connected</h4>
-                 <p className="text-slate-500 mt-2">Waiting for ESP32 hardware to register with the backend.</p>
+                 <p className="text-slate-500 mt-2">Waiting for ESP32 hardware node to register with backend.</p>
                </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {sensors.map((device, i) => {
-                  const isOnline = device.status === 'Online';
-                  const isCam = device.cameraId && device.cameraId !== 'None';
-                  
-                  // Calculate mock health based on lastUpdated (if within 5 mins, 100%, otherwise decays)
-                  let health = 0;
-                  if (device.lastUpdated) {
-                     const diffMins = (Date.now() - new Date(device.lastUpdated).getTime()) / 60000;
-                     health = Math.max(0, 100 - Math.floor(diffMins));
-                     if (!isOnline) health = 0;
-                  }
+                  const isNodeOnline = device.status?.toLowerCase() === 'online';
+                  const deviceVoltage = device.sensorId === TARGET_DEVICE_ID 
+                    ? currentVoltage 
+                    : (device.voltage !== undefined ? device.voltage : 0);
 
-                  const colors = isOnline ? {
+                  const colors = isNodeOnline ? {
                     bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200", 
                     indicator: "bg-emerald-500", progressBg: "bg-emerald-100", progress: "bg-emerald-500",
                     iconBg: "from-emerald-50 to-emerald-100/50"
@@ -433,86 +644,65 @@ const LiveMonitoring = () => {
                   };
 
                   return (
-                    <GlassCard key={device._id} delay={1.0 + (i * 0.05)} className="p-6">
+                    <GlassCard key={device._id || device.sensorId || i} delay={0.6 + (i * 0.05)} className="p-6">
                       <div className="flex flex-col h-full relative z-10">
                         {/* Header: Icon & Badges */}
                         <div className="flex items-start justify-between mb-5">
                           <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${colors.iconBg} border ${colors.border} flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110`}>
-                            {isCam ? <Camera className={`w-6 h-6 ${colors.text}`} /> : <Cpu className={`w-6 h-6 ${colors.text}`} />}
+                            <Camera className={`w-6 h-6 ${colors.text}`} />
                           </div>
                           <div className={`px-2.5 py-1 rounded-full ${colors.bg} border ${colors.border} ${colors.text} flex items-center gap-1.5 shadow-sm`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${colors.indicator} ${isOnline ? 'animate-pulse' : ''}`} />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">{device.status}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${colors.indicator} ${isNodeOnline ? 'animate-pulse' : ''}`} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">{isNodeOnline ? 'Online' : 'Offline'}</span>
                           </div>
                         </div>
 
                         {/* Identity */}
-                        <div className="mb-6">
-                          <h4 className="font-bold text-[#0F172A] text-[16px] truncate" title={device.sensorId}>{device.sensorId}</h4>
-                          <p className="text-[#64748B] text-[13px] font-medium mt-0.5 truncate">{device.location || 'Unknown Location'}</p>
+                        <div className="mb-5">
+                          <h4 className="font-bold text-[#0F172A] text-[16px] truncate" title={device.sensorId}>
+                            {device.sensorId}
+                          </h4>
+                          <p className="text-[#64748B] text-[13px] font-medium mt-0.5 truncate">
+                            {device.location || 'ESP32 Station'}
+                          </p>
                         </div>
 
-                        {/* Health Score */}
-                        <div className="mb-5">
-                          <div className="flex justify-between items-end mb-2">
-                            <span className="text-[11px] font-bold uppercase tracking-widest text-[#64748B]">Health Score</span>
-                            <span className={`text-[14px] font-bold ${colors.text}`}>{health}%</span>
+                        {/* Hardware Details */}
+                        <div className="space-y-2 mb-5 text-xs">
+                          <div className="flex justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <span className="text-slate-400 font-semibold">Microcontroller:</span>
+                            <span className="font-bold text-slate-700">ESP32-CAM</span>
                           </div>
-                          <div className={`w-full h-1.5 ${colors.progressBg} rounded-full overflow-hidden`}>
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${health}%` }}
-                              transition={{ duration: 1.5, ease: "easeOut" }}
-                              className={`h-full ${colors.progress} rounded-full relative`}
-                            >
-                              {isOnline && <div className="absolute top-0 right-0 bottom-0 left-0 bg-white/20 animate-[shimmer_2s_infinite]" />}
-                            </motion.div>
+                          <div className="flex justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <span className="text-slate-400 font-semibold">Converter:</span>
+                            <span className="font-bold text-slate-700">ADS1115 (16-Bit)</span>
                           </div>
                         </div>
 
                         {/* Metrics Grid */}
-                        <div className="grid grid-cols-2 gap-2 mt-auto pt-5 border-t border-[#F1F5F9]">
+                        <div className="grid grid-cols-2 gap-2 mt-auto pt-4 border-t border-[#F1F5F9]">
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] mb-1">Current AQI</p>
-                            <p className="text-[#0F172A] font-semibold text-[13px]">{device.aqi || '--'}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] mb-1">Live Reading</p>
+                            <p className="text-[#0F172A] font-black text-[13px] font-mono">
+                              {typeof deviceVoltage === 'number' ? `${deviceVoltage.toFixed(3)} V` : '--'}
+                            </p>
                           </div>
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] mb-1">Last Sync</p>
-                            <p className="text-[#0F172A] font-semibold text-[13px] truncate">
-                              {device.lastUpdated ? new Date(device.lastUpdated).toLocaleTimeString('en-IN') : '--'}
+                            <p className="text-[#0F172A] font-semibold text-[12px] truncate font-mono">
+                              {formatBackendTimestamp(device.lastUpdated)}
                             </p>
                           </div>
                         </div>
                       </div>
                     </GlassCard>
-                  )
+                  );
                 })}
               </div>
             )}
           </div>
         </>
       )}
-
-      {/* Helper SVGs */}
-      <style>{`
-        @keyframes scan {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(600px); }
-        }
-        .animate-scan {
-          animation: scan 3.5s linear infinite;
-        }
-      `}</style>
-      <svg className="hidden">
-        <symbol id="scanline" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <rect width="100" height="100" fill="url(#scanline-grad)" />
-          <linearGradient id="scanline-grad" x1="0" y1="0" x2="0" y2="1">
-             <stop offset="0%" stopColor="transparent" />
-             <stop offset="50%" stopColor="rgba(59,130,246,0.2)" />
-             <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-        </symbol>
-      </svg>
       </div>
     </div>
   );

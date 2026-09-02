@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion';
+import React, { memo, useRef } from 'react';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Activity, Cloud, Camera, Wifi, Database } from 'lucide-react';
-import heroBg from '../assets/hero-bg.png'; // Make sure this image is available
+import heroBg from '../assets/hero-bg.png';
 
 const floatingCards = [
   { title: 'Live AQI', value: '42 Good', icon: Activity, position: 'top-[10%] left-[5%]', delay: 0 },
@@ -11,21 +12,30 @@ const floatingCards = [
   { title: 'Live Data', value: 'Streaming', icon: Database, position: 'bottom-[15%] right-[10%]', delay: 1 },
 ];
 
-const Hero = () => {
+const Hero = memo(() => {
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { margin: '100px 0px 100px 0px' });
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <section className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden">
+    <section ref={sectionRef} className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden">
       {/* FULL SCREEN BACKGROUND IMAGE */}
       <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
         <img 
           src={heroBg} 
           alt="AWARE Background" 
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          width="1920"
+          height="1080"
           className="w-full h-full object-cover object-center"
         />
       </div>
 
       {/* Background ambient lighting */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px] z-0 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] z-0 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px] z-0 pointer-events-none transform-gpu" />
+      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] z-0 pointer-events-none transform-gpu" />
 
       <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
@@ -56,7 +66,7 @@ const Hero = () => {
               <motion.a
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                href="#platform"
+                href="#features"
                 className="group flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-white font-semibold shadow-[0_8px_25px_rgba(47,128,237,0.3)] hover:shadow-[0_12px_30px_rgba(47,128,237,0.4)] transition-all"
               >
                 Explore Platform
@@ -65,7 +75,7 @@ const Hero = () => {
               <motion.a
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                href="#dashboard"
+                href="#features"
                 className="group flex items-center gap-2 px-8 py-4 rounded-full bg-white border border-primary/15 text-primary font-semibold shadow-sm hover:shadow-md transition-all"
               >
                 View Dashboard
@@ -76,9 +86,9 @@ const Hero = () => {
             {/* Trusted Users */}
             <div className="flex items-center gap-4">
               <div className="flex -space-x-3">
-                <img src="https://i.pravatar.cc/100?img=1" alt="User" className="w-10 h-10 rounded-full border-2 border-white" />
-                <img src="https://i.pravatar.cc/100?img=2" alt="User" className="w-10 h-10 rounded-full border-2 border-white" />
-                <img src="https://i.pravatar.cc/100?img=3" alt="User" className="w-10 h-10 rounded-full border-2 border-white" />
+                <img src="https://i.pravatar.cc/100?img=1" alt="User" loading="eager" decoding="async" width="40" height="40" className="w-10 h-10 rounded-full border-2 border-white" />
+                <img src="https://i.pravatar.cc/100?img=2" alt="User" loading="eager" decoding="async" width="40" height="40" className="w-10 h-10 rounded-full border-2 border-white" />
+                <img src="https://i.pravatar.cc/100?img=3" alt="User" loading="eager" decoding="async" width="40" height="40" className="w-10 h-10 rounded-full border-2 border-white" />
               </div>
               <p className="text-sm font-medium text-text-secondary max-w-[200px] leading-snug">
                 Trusted by environmental advocates and smart cities worldwide
@@ -88,14 +98,16 @@ const Hero = () => {
 
           {/* Right Side (60%) */}
           <div className="w-full lg:w-[60%] relative h-[600px] lg:h-[800px] flex items-center justify-center -z-10 pointer-events-none">
-            {/* The background image is now full screen behind everything */}
-
             {/* We recreate the HTML floating cards over the image in case they need to be interactive */}
             {floatingCards.map((card, idx) => (
               <motion.div
                 key={idx}
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: [0, -10, 0] }}
+                animate={
+                  isInView && !shouldReduceMotion
+                    ? { opacity: 1, y: [0, -10, 0] }
+                    : { opacity: 1, y: 0 }
+                }
                 transition={{
                   opacity: { duration: 0.8, delay: card.delay + 0.5 },
                   y: { duration: 5, repeat: Infinity, ease: 'easeInOut', delay: card.delay }
@@ -117,6 +129,8 @@ const Hero = () => {
       </div>
     </section>
   );
-};
+});
+
+Hero.displayName = 'Hero';
 
 export default Hero;

@@ -36,8 +36,11 @@ function App() {
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="monitoring" element={<LiveMonitoring />} />
+            <Route path="alerts" element={<ActivityLogs />} />
             <Route path="evidence" element={<EvidenceManagement />} />
             <Route path="logs" element={<ActivityLogs />} />
+            <Route path="devices" element={<LiveMonitoring />} />
+            <Route path="settings" element={<AdminAnalytics />} />
             <Route path="map" element={<GISMap />} />
             <Route path="satellite" element={<SatelliteMonitoring />} />
             <Route path="analytics" element={<AdminAnalytics />} />

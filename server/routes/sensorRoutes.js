@@ -4,11 +4,19 @@ import {
   getSensorById,
   createSensor,
   updateSensor,
-  deleteSensor
+  deleteSensor,
+  recordSensorReading,
+  getSensorReadings
 } from '../controllers/sensorController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Hardware Sensor Ingestion Endpoint (Public / Device accessible)
+router.post('/reading', recordSensorReading);
+
+// Historical readings for a specific sensor (e.g. GET /api/sensors/ESP32-CAM-001/readings?limit=50)
+router.get('/:sensorId/readings', getSensorReadings);
 
 router.route('/')
   .get(protect, admin, getSensors)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,22 +13,31 @@ const navLinks = [
   { name: 'Contact', path: '#contact' },
 ];
 
-const Navbar = () => {
+const Navbar = memo(() => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrolled = window.scrollY > 20;
+          setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 flex items-center h-[90px] ${
-        isScrolled ? 'bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-[0_4px_30px_rgba(47,128,237,0.05)]' : 'bg-transparent'
+        isScrolled ? 'bg-white/90 backdrop-blur-md border-b border-white/40 shadow-[0_4px_30px_rgba(47,128,237,0.05)]' : 'bg-transparent'
       }`}
     >
       <div className="container mx-auto px-6 md:px-12 flex items-center justify-between w-full max-w-[1400px]">
@@ -38,6 +47,8 @@ const Navbar = () => {
           <img 
             src={logoImg} 
             alt="AWARE Logo" 
+            loading="eager"
+            decoding="async"
             className="h-[90px] scale-[1.2] origin-left w-auto object-contain" 
           />
         </Link>
@@ -59,7 +70,7 @@ const Navbar = () => {
         <div className="hidden lg:flex items-center gap-5">
           <Link
             to="/login"
-            className="flex items-center justify-center px-[30px] py-[15px] rounded-full bg-white/80 backdrop-blur-md ring-1 ring-inset ring-primary/20 text-[15px] font-semibold tracking-wide text-primary shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-300 ease-in-out hover:bg-primary/5 hover:ring-primary/30 hover:shadow-[0_4px_15px_rgba(47,128,237,0.1)] hover:-translate-y-[2px] hover:scale-[1.03]"
+            className="flex items-center justify-center px-[30px] py-[15px] rounded-full bg-white/90 ring-1 ring-inset ring-primary/20 text-[15px] font-semibold tracking-wide text-primary shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-300 ease-in-out hover:bg-primary/5 hover:ring-primary/30 hover:shadow-[0_4px_15px_rgba(47,128,237,0.1)] hover:-translate-y-[2px] hover:scale-[1.03]"
           >
             Login
           </Link>
@@ -87,7 +98,7 @@ const Navbar = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-[90px] left-0 right-0 bg-white/95 backdrop-blur-2xl border-b border-primary/10 p-6 flex flex-col gap-4 lg:hidden shadow-2xl"
+            className="absolute top-[90px] left-0 right-0 bg-white/95 border-b border-primary/10 p-6 flex flex-col gap-4 lg:hidden shadow-2xl"
           >
             {navLinks.map((link) => (
               <a
@@ -120,6 +131,8 @@ const Navbar = () => {
       </AnimatePresence>
     </header>
   );
-};
+});
+
+Navbar.displayName = 'Navbar';
 
 export default Navbar;

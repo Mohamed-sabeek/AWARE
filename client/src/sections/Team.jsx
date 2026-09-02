@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { memo, useRef, useState } from 'react';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { Globe, Mail, Camera } from 'lucide-react';
 import sabeekImg from '../assets/sabeek.png';
 import nivethaImg from '../assets/nivetha.png';
@@ -98,13 +98,7 @@ const teamData = [
   }
 ];
 
-const badgePositions = [
-  { top: '-5%', left: '-5%', delay: 0 },
-  { top: '35%', right: '-10%', delay: 0.1 },
-  { bottom: '15%', left: '-10%', delay: 0.2 }
-];
-
-const SocialIcon = ({ Icon, tooltip, href, delay = 0 }) => {
+const SocialIcon = memo(({ Icon, tooltip, href, delay = 0 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -116,7 +110,7 @@ const SocialIcon = ({ Icon, tooltip, href, delay = 0 }) => {
       <a 
         href={href}
         style={{ transitionDelay: `0s, ${delay}s, 0s` }}
-        className="w-9 h-9 rounded-full bg-white/70 backdrop-blur-md border border-primary/10 flex items-center justify-center text-text-secondary transition-all duration-300 hover:!bg-gradient-to-br hover:!from-primary hover:!to-blue-600 hover:!text-white hover:scale-110 hover:shadow-[0_0_20px_rgba(47,128,237,0.4)] hover:border-transparent relative z-10 group-hover:-translate-y-1.5"
+        className="w-9 h-9 rounded-full bg-white/85 border border-primary/10 flex items-center justify-center text-text-secondary transition-all duration-300 hover:!bg-gradient-to-br hover:!from-primary hover:!to-blue-600 hover:!text-white hover:scale-110 hover:shadow-[0_0_20px_rgba(47,128,237,0.4)] hover:border-transparent relative z-10 group-hover:-translate-y-1.5"
       >
         <Icon className="w-4 h-4 transition-colors" strokeWidth={2.5} />
       </a>
@@ -128,7 +122,7 @@ const SocialIcon = ({ Icon, tooltip, href, delay = 0 }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 2, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/95 backdrop-blur-xl text-white text-xs font-semibold rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 flex flex-col items-center"
+            className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/95 text-white text-xs font-semibold rounded-lg shadow-xl pointer-events-none whitespace-nowrap z-50 flex flex-col items-center"
           >
             {tooltip}
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900/95 rotate-45 border-r border-b border-gray-700/50"></div>
@@ -137,15 +131,20 @@ const SocialIcon = ({ Icon, tooltip, href, delay = 0 }) => {
       </AnimatePresence>
     </div>
   );
-};
+});
 
-const Team = () => {
+SocialIcon.displayName = 'SocialIcon';
+
+const Team = memo(() => {
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { margin: "100px 0px 100px 0px" });
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.15,
+        staggerChildren: 0.12,
       }
     }
   };
@@ -161,20 +160,24 @@ const Team = () => {
   };
 
   return (
-    <section id="team" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
+    <section ref={sectionRef} id="team" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
       
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none">
-        <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.15, 0.25, 0.15] }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-0 left-1/4 w-[35rem] h-[35rem] bg-blue-400/20 rounded-full blur-[100px]"
-        />
-        <motion.div 
-          animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute bottom-1/4 right-1/4 w-[45rem] h-[45rem] bg-indigo-400/15 rounded-full blur-[120px]"
-        />
+        {isInView && (
+          <>
+            <motion.div 
+              animate={{ scale: [1, 1.1, 1], opacity: [0.15, 0.25, 0.15] }}
+              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-0 left-1/4 w-[35rem] h-[35rem] bg-blue-400/20 rounded-full blur-[100px] transform-gpu"
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
+              transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              className="absolute bottom-1/4 right-1/4 w-[45rem] h-[45rem] bg-indigo-400/15 rounded-full blur-[120px] transform-gpu"
+            />
+          </>
+        )}
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
       </div>
 
@@ -217,7 +220,7 @@ const Team = () => {
             <motion.div
               key={member.id}
               variants={itemVariants}
-              className="relative bg-white/40 backdrop-blur-3xl border border-white/60 rounded-[32px] overflow-hidden flex flex-col items-center text-center shadow-[0_8px_32px_rgba(47,128,237,0.04)] hover:shadow-[0_16px_48px_rgba(47,128,237,0.12)] hover:-translate-y-2 hover:border-primary/30 transition-all duration-500 group h-[460px]"
+              className="relative bg-white/85 border border-white/80 rounded-[32px] overflow-hidden flex flex-col items-center text-center shadow-[0_8px_32px_rgba(47,128,237,0.04)] hover:shadow-[0_16px_48px_rgba(47,128,237,0.12)] hover:-translate-y-2 hover:border-primary/30 transition-all duration-500 group h-[460px]"
             >
               {/* Profile Image Section (Approx 65%) */}
               <div className="w-full h-[65%] relative pt-4 px-4">
@@ -228,14 +231,16 @@ const Team = () => {
                 
                 {/* Image / Placeholder */}
                 <motion.div 
-                  animate={{ y: [0, -6, 0] }}
+                  animate={isInView ? { y: [0, -6, 0] } : { y: 0 }}
                   transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                  className="w-full h-full relative z-10 flex items-end justify-center pb-2"
+                  className="w-full h-full relative z-10 flex items-end justify-center pb-2 transform-gpu"
                 >
                   {member.image ? (
                     <img 
                       src={member.image} 
                       alt={member.name} 
+                      loading="lazy"
+                      decoding="async"
                       className="w-[90%] h-full object-contain object-bottom drop-shadow-[0_10px_20px_rgba(47,128,237,0.15)] group-hover:scale-105 transition-transform duration-700 ease-out" 
                     />
                   ) : (
@@ -248,7 +253,7 @@ const Team = () => {
               </div>
               
               {/* Bottom Information Panel (Approx 35%) */}
-              <div className="w-full flex-1 flex flex-col items-center justify-center p-5 bg-white/40 backdrop-blur-md border-t border-white/50 relative z-20">
+              <div className="w-full flex-1 flex flex-col items-center justify-center p-5 bg-white/90 border-t border-white/50 relative z-20">
                 <h3 className="text-lg font-extrabold text-blue-950 mb-1 group-hover:text-primary transition-colors">{member.name}</h3>
                 <p className="text-[11px] font-bold text-primary uppercase tracking-widest leading-snug px-2 text-center">
                   {member.role.split('•').map((part, i, arr) => (
@@ -274,6 +279,8 @@ const Team = () => {
       </div>
     </section>
   );
-};
+});
+
+Team.displayName = 'Team';
 
 export default Team;

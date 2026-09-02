@@ -33,7 +33,7 @@ export const getDashboardStats = async (req, res) => {
 
     // 3. Alerts & Evidence
     const activeAlerts = await Alert.countDocuments({ status: 'Active' });
-    const evidenceCount = await Evidence.countDocuments({ createdAt: { $gte: today } });
+    const evidenceCount = await Evidence.countDocuments();
 
     // 4. Latest Items
     const latestReading = await SensorReading.findOne().sort({ timestamp: -1 });

@@ -7,12 +7,12 @@ import textLogo from '../assets/awaredashboard-logo.png';
 import { 
   LayoutDashboard, 
   Radio, 
+  AlertTriangle,
   Camera, 
-  Map, 
-  Satellite, 
-  TrendingUp, 
+  List, 
+  Cpu,
+  Settings,
   Menu,
-  List,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -23,11 +23,11 @@ import {
 const navItems = [
   { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/admin/monitoring', icon: Radio, label: 'Live Monitoring' },
-  { path: '/admin/logs', icon: List, label: 'Activity Logs' },
+  { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts / Events' },
   { path: '/admin/evidence', icon: Camera, label: 'Evidence' },
-  { path: '/admin/map', icon: Map, label: 'GIS Map' },
-  { path: '/admin/satellite', icon: Satellite, label: 'Satellite' },
-  { path: '/admin/analytics', icon: TrendingUp, label: 'Analytics' },
+  { path: '/admin/logs', icon: List, label: 'Activity Logs' },
+  { path: '/admin/devices', icon: Cpu, label: 'Devices' },
+  { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
 const AdminLayout = () => {
@@ -35,18 +35,18 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = React.useCallback(() => {
     logout();
     navigate('/', { replace: true });
-  };
-  const currentNav = navItems.find(item => location.pathname.startsWith(item.path));
-  const pageTitle = currentNav ? currentNav.label : 'Dashboard';
+  }, [logout, navigate]);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024) {
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const handleMediaChange = (e) => {
+      if (e.matches) {
         setIsSidebarOpen(false);
         setIsMobile(true);
       } else {
@@ -54,9 +54,9 @@ const AdminLayout = () => {
         setIsMobile(false);
       }
     };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    handleMediaChange(mediaQuery);
+    mediaQuery.addEventListener('change', handleMediaChange);
+    return () => mediaQuery.removeEventListener('change', handleMediaChange);
   }, []);
 
   const sidebarVariants = {

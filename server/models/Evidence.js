@@ -13,49 +13,61 @@ const evidenceSchema = new mongoose.Schema({
   },
   cloudinaryPublicId: {
     type: String,
-    required: true
+    required: false,
+    default: ''
+  },
+  voltage: {
+    type: Number,
+    default: 0
   },
   detectionType: {
     type: String,
     required: true,
-    enum: ['Smoke', 'Fire', 'Deforestation', 'Illegal Mining', 'Other'],
-    default: 'Smoke'
+    enum: ['Smoke', 'Fire', 'Deforestation', 'Illegal Mining', 'Threshold Exceeded', 'Monitoring Snapshot', 'Other'],
+    default: 'Threshold Exceeded'
   },
   aqi: {
     type: Number,
-    required: true,
+    required: false,
+    default: 0,
     min: 0
   },
   confidence: {
     type: Number,
-    required: true,
+    required: false,
+    default: 95,
     min: 0,
     max: 100
   },
   location: {
     type: String,
-    required: true
+    required: true,
+    default: 'ESP32 Station'
   },
   latitude: {
     type: Number,
-    required: true
+    required: false,
+    default: 0
   },
   longitude: {
     type: Number,
-    required: true
+    required: false,
+    default: 0
   },
   sensorId: {
     type: String,
-    required: true
+    required: true,
+    default: 'ESP32-CAM-001'
   },
   cameraId: {
     type: String,
-    required: true
+    required: false,
+    default: 'ESP32-CAM-001'
   },
   status: {
     type: String,
     enum: ['Pending', 'Verified', 'Rejected', 'Report Generated'],
-    default: 'Pending'
+    default: 'Verified'
   },
   reportStatus: {
     type: String,

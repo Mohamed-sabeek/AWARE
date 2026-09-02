@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { memo, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { Globe, Mail, ArrowRight } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
@@ -39,7 +40,7 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.15 }
+    transition: { staggerChildren: 0.12 }
   }
 };
 
@@ -52,7 +53,7 @@ const itemVariants = {
   }
 };
 
-const SocialButton = ({ Icon, href }) => (
+const SocialButton = memo(({ Icon, href }) => (
   <motion.a
     href={href}
     variants={itemVariants}
@@ -61,9 +62,11 @@ const SocialButton = ({ Icon, href }) => (
   >
     <Icon className="w-[18px] h-[18px] transition-colors" strokeWidth={2} />
   </motion.a>
-);
+));
 
-const FooterLink = ({ text, href }) => (
+SocialButton.displayName = 'SocialButton';
+
+const FooterLink = memo(({ text, href }) => (
   <motion.a
     href={href}
     variants={itemVariants}
@@ -77,27 +80,36 @@ const FooterLink = ({ text, href }) => (
     </div>
     <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-primary/40 transition-all duration-300 group-hover:w-full group-hover:translate-x-5"></span>
   </motion.a>
-);
+));
 
-const Footer = () => {
+FooterLink.displayName = 'FooterLink';
+
+const Footer = memo(() => {
+  const footerRef = useRef(null);
+  const isInView = useInView(footerRef, { margin: "100px 0px 100px 0px" });
+
   return (
-    <footer className="relative bg-[var(--color-bg-light)] pt-24 pb-8 overflow-hidden">
+    <footer ref={footerRef} className="relative bg-[var(--color-bg-light)] pt-24 pb-8 overflow-hidden">
       
       {/* Subtle Top Divider */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none">
-        <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-0 left-1/4 w-[40rem] h-[40rem] bg-blue-400/20 rounded-full blur-[120px]"
-        />
-        <motion.div 
-          animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.12, 0.08] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 w-[35rem] h-[35rem] bg-indigo-400/15 rounded-full blur-[100px]"
-        />
+        {isInView && (
+          <>
+            <motion.div 
+              animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
+              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-0 left-1/4 w-[40rem] h-[40rem] bg-blue-400/20 rounded-full blur-[120px] transform-gpu"
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.12, 0.08] }}
+              transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+              className="absolute bottom-1/4 right-1/4 w-[35rem] h-[35rem] bg-indigo-400/15 rounded-full blur-[100px] transform-gpu"
+            />
+          </>
+        )}
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.1] mix-blend-soft-light"></div>
       </div>
 
@@ -119,7 +131,7 @@ const Footer = () => {
               whileHover={{ scale: 1.02 }} 
               className="mb-8 block"
             >
-              <img src={logoImg} alt="AWARE" className="h-[70px] w-auto object-contain" />
+              <img src={logoImg} alt="AWARE" loading="lazy" decoding="async" width="160" height="70" className="h-[70px] w-auto object-contain" />
             </motion.a>
             
             <motion.h3 
@@ -198,6 +210,8 @@ const Footer = () => {
       </div>
     </footer>
   );
-};
+});
+
+Footer.displayName = 'Footer';
 
 export default Footer;

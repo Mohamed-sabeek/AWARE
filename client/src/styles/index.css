@@ -15,26 +15,38 @@
 /* Base styles and custom utilities */
 @layer utilities {
   .glass {
-    @apply bg-white/75 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgba(47,128,237,0.05)];
+    @apply bg-white/85 backdrop-blur-sm border border-white/60 shadow-[0_8px_30px_rgba(47,128,237,0.05)];
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
   
   .glass-card {
-    @apply bg-[rgba(255,255,255,0.78)] backdrop-blur-2xl border border-white rounded-[20px] shadow-[0_12px_40px_rgba(47,128,237,0.08)] hover:shadow-[0_16px_50px_rgba(47,128,237,0.12)] transition-all duration-300;
+    @apply bg-[rgba(255,255,255,0.9)] backdrop-blur-sm border border-white rounded-[20px] shadow-[0_12px_40px_rgba(47,128,237,0.08)] hover:shadow-[0_16px_50px_rgba(47,128,237,0.12)] transition-all duration-300;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
   
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-accent;
+  }
+
+  .gpu-layer {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
   }
 }
 
 html {
   font-size: 85%; /* Scales down all rem-based Tailwind utilities */
   scroll-behavior: smooth;
+  text-rendering: optimizeSpeed;
 }
 
 body {
   background-color: var(--color-bg-light);
   color: var(--color-text-primary);
+  overflow-x: hidden;
 }
 
 @keyframes gradient {
@@ -45,6 +57,7 @@ body {
 
 .animate-gradient {
   animation: gradient 6s linear infinite;
+  will-change: background-position;
 }
 
 @keyframes shimmer {
@@ -65,3 +78,13 @@ input:-webkit-autofill:active {
 }
 .custom-scrollbar::-webkit-scrollbar { display: none; }
 .custom-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Reduced Motion Optimization */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

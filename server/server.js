@@ -13,7 +13,13 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import activityLogRoutes from './routes/activityLogRoutes.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Connect to Database
 connectDB();
@@ -31,6 +37,7 @@ const frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(
 
 const allowedOrigins = [
   'http://localhost:5183',
+  'http://localhost:5173',
   frontendUrl
 ].filter(Boolean);
 
@@ -42,11 +49,10 @@ const io = new Server(server, {
   }
 });
 
+app.set('io', io);
+
 app.use(cors({
   origin: function (origin, callback) {
-    console.log("Incoming Origin:", origin);
-    console.log("Allowed Origins:", allowedOrigins);
-    
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -57,6 +63,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Serve static uploaded files
+app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -79,23 +88,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mock Socket.io connection for dashboard live data simulation
+// Socket.io connection for dashboard live data
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  
-  // Emit mock air quality data every 5 seconds
-  const interval = setInterval(() => {
-    socket.emit('air-quality-update', {
-      aqi: Math.floor(Math.random() * (150 - 20) + 20),
-      co2: Math.floor(Math.random() * (800 - 400) + 400),
-      pm25: Math.floor(Math.random() * (50 - 5) + 5),
-      timestamp: new Date()
-    });
-  }, 5000);
-
+  console.log('Socket.io Client connected:', socket.id);
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-    clearInterval(interval);
+    console.log('Socket.io Client disconnected:', socket.id);
   });
 });
 

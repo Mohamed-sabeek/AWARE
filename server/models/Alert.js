@@ -8,7 +8,7 @@ const alertSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['High AQI', 'Gas Leak', 'Temperature', 'Evidence', 'System'],
+    enum: ['High AQI', 'Gas Leak', 'Threshold Exceeded', 'Temperature', 'Evidence', 'System'],
     required: true
   },
   severity: {

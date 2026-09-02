@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { memo, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { Wind, Activity, Cpu, Sparkles, Camera, Cloud, Database, LayoutDashboard, Bell, Users, Check } from 'lucide-react';
 
 const workflowSteps = [
@@ -14,8 +15,9 @@ const workflowSteps = [
   { id: 10, title: 'Citizen Report', desc: 'App updated', icon: Users },
 ];
 
-const WorkflowNode = ({ step, index, total }) => {
+const WorkflowNode = memo(({ step, index, total, isInView = true }) => {
   const getMicroAnimation = (id) => {
+     if (!isInView) return null;
      switch(id) {
        case 2: return <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0, 0.5, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 rounded-full border border-primary pointer-events-none" />;
        case 3: return <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ duration: 0.5, repeat: Infinity }} className="absolute top-[18px] right-[18px] w-2 h-2 bg-green-500 rounded-full shadow-[0_0_5px_#22c55e]" />;
@@ -42,9 +44,9 @@ const WorkflowNode = ({ step, index, total }) => {
         className="group relative flex flex-col items-center z-10 cursor-pointer"
       >
         <motion.div 
-          animate={{ y: [-4, 4, -4] }} 
+          animate={isInView ? { y: [-4, 4, -4] } : { y: 0 }} 
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: index * 0.2 }}
-          className="w-28 h-28 rounded-full bg-white/70 backdrop-blur-xl border border-white shadow-[0_20px_40px_rgba(47,128,237,0.1)] flex items-center justify-center relative group-hover:scale-110 group-hover:border-primary/50 group-hover:shadow-[0_20px_50px_rgba(47,128,237,0.3)] group-hover:bg-white transition-all duration-300 overflow-hidden"
+          className="w-28 h-28 rounded-full bg-white/90 border border-white shadow-[0_20px_40px_rgba(47,128,237,0.1)] flex items-center justify-center relative group-hover:scale-110 group-hover:border-primary/50 group-hover:shadow-[0_20px_50px_rgba(47,128,237,0.3)] group-hover:bg-white transition-all duration-300 overflow-hidden transform-gpu"
         >
            {/* Soft Blue Glow behind icon */}
            <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(47,128,237,0.15)_0%,_rgba(255,255,255,0)_70%)] pointer-events-none" />
@@ -81,25 +83,32 @@ const WorkflowNode = ({ step, index, total }) => {
             className="w-full h-full bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10 relative overflow-hidden rounded-full"
           >
              {/* Animated Particle traveling along path */}
-             <motion.div 
-               animate={{ left: ["-20%", "120%"] }} 
-               transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: index * 0.2 }}
-               className="absolute top-1/2 -translate-y-1/2 w-8 h-[3px] bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_15px_#2F80ED]"
-             />
+             {isInView && (
+               <motion.div 
+                 animate={{ left: ["-20%", "120%"] }} 
+                 transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: index * 0.2 }}
+                 className="absolute top-1/2 -translate-y-1/2 w-8 h-[3px] bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_15px_#2F80ED] transform-gpu"
+               />
+             )}
           </motion.div>
         </div>
       )}
     </div>
   );
-};
+});
 
-const Workflow = () => {
+WorkflowNode.displayName = 'WorkflowNode';
+
+const Workflow = memo(() => {
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { margin: "100px 0px 100px 0px" });
+
   return (
-    <section id="workflow" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
+    <section ref={sectionRef} id="workflow" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
       
       {/* Premium Background Ambience */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[600px] bg-[radial-gradient(ellipse,_rgba(47,128,237,0.08)_0%,_rgba(0,0,0,0)_70%)] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[600px] bg-[radial-gradient(ellipse,_rgba(47,128,237,0.08)_0%,_rgba(0,0,0,0)_70%)] pointer-events-none transform-gpu" />
 
       <div className="container mx-auto relative z-10 w-full max-w-[1600px]">
         
@@ -130,7 +139,7 @@ const Workflow = () => {
           <div className="flex items-center mx-auto min-w-max pr-20">
             {workflowSteps.map((step, idx) => (
               <div key={step.id} className="snap-center">
-                <WorkflowNode step={step} index={idx} total={workflowSteps.length} />
+                <WorkflowNode step={step} index={idx} total={workflowSteps.length} isInView={isInView} />
               </div>
             ))}
           </div>
@@ -150,6 +159,8 @@ const Workflow = () => {
       `}} />
     </section>
   );
-};
+});
+
+Workflow.displayName = 'Workflow';
 
 export default Workflow;

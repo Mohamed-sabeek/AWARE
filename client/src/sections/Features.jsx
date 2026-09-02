@@ -1,50 +1,21 @@
-import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import React, { memo, useRef, useState, useEffect } from 'react';
+import { motion, useMotionValue, useTransform, useSpring, useInView, useReducedMotion } from 'framer-motion';
 import { Activity, Flame, Camera, Cloud, Bell, LayoutDashboard, FileText, Map, History, Users, ArrowRight, ShieldCheck, MapPin, Navigation } from 'lucide-react';
-import { useRef, useState, useEffect } from 'react';
 
 // ==========================================
 // VISUAL COMPONENTS (MINI UI ILLUSTRATIONS)
 // ==========================================
 
-const AQIVisual = ({ isHovered }) => {
-  const [aqi, setAqi] = useState(0);
-  const [isDone, setIsDone] = useState(false);
-
-  useEffect(() => {
-    if (isHovered) {
-      setAqi(0);
-      setIsDone(false);
-      let current = 0;
-      const end = 42;
-      // Animate up to 42 over 1.5 seconds (35ms interval)
-      const interval = setInterval(() => {
-        current += 1;
-        if (current >= end) {
-          current = end;
-          clearInterval(interval);
-          setIsDone(true);
-        }
-        setAqi(current);
-      }, 35);
-      return () => clearInterval(interval);
-    } else {
-      setAqi(42);
-      setIsDone(true);
-    }
-  }, [isHovered]);
-
-  const dashOffset = 502 - (aqi / 42) * (502 - 150);
-  const rotationDegrees = (aqi / 42) * 252.7; // Maps directly to stroke progression
-
+const AQIVisual = memo(({ isHovered, isInView = true }) => {
   return (
     <div className="w-full h-full relative flex flex-col items-center justify-center opacity-90 pointer-events-none group-hover:scale-[1.05] group-hover:-translate-y-2 transition-all duration-700 pb-2">
        <div className="relative w-full max-w-[160px] aspect-square flex items-center justify-center">
           
-          {/* Subtle blue pulse expanding from center after load completes */}
+          {/* Subtle blue pulse expanding from center */}
           <motion.div 
-            animate={isDone ? { scale: [1, 1.3, 1], opacity: [0, 0.2, 0] } : { opacity: 0 }} 
+            animate={isInView ? { scale: [1, 1.3, 1], opacity: [0, 0.2, 0] } : { opacity: 0 }} 
             transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} 
-            className="absolute inset-0 bg-primary rounded-full blur-xl" 
+            className="absolute inset-0 bg-primary rounded-full blur-xl transform-gpu" 
           />
 
           <svg viewBox="0 0 192 192" className="w-full h-full transform -rotate-90 drop-shadow-xl relative z-10 overflow-visible">
@@ -65,16 +36,18 @@ const AQIVisual = ({ isHovered }) => {
               cx="96" cy="96" r="80" 
               stroke="url(#aqiGrad)" strokeWidth="12" fill="transparent" strokeLinecap="round"
               strokeDasharray={502} 
-              animate={{ strokeDashoffset: dashOffset }} 
-              transition={{ duration: 0.1, ease: "linear" }} 
+              initial={{ strokeDashoffset: 502 }}
+              animate={isInView ? { strokeDashoffset: 150 } : { strokeDashoffset: 502 }} 
+              transition={{ duration: 1.2, ease: "easeOut" }} 
               className="drop-shadow-[0_0_15px_rgba(47,128,237,0.6)]" 
             />
             
             {/* Glowing dot traveling around circumference */}
             <motion.g 
-              animate={{ rotate: rotationDegrees }} 
+              initial={{ rotate: 0 }}
+              animate={isInView ? { rotate: 252.7 } : { rotate: 0 }} 
               style={{ originX: "96px", originY: "96px" }} 
-              transition={{ duration: 0.1, ease: "linear" }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
             >
                <circle cx="176" cy="96" r="6" fill="#ffffff" className="drop-shadow-[0_0_15px_#ffffff]" />
             </motion.g>
@@ -84,18 +57,18 @@ const AQIVisual = ({ isHovered }) => {
              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-widest mb-0.5">Live AQI</span>
              
              <motion.span 
-               animate={isDone ? { scale: [1, 1.03, 1] } : { scale: 1 }} 
+               animate={isInView ? { scale: [1, 1.03, 1] } : { scale: 1 }} 
                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} 
                className="text-[36px] font-black text-primary leading-none tracking-tighter"
              >
-               {aqi}
+               42
              </motion.span>
              
-             {/* Badge ONLY appears when counting is done */}
+             {/* Badge */}
              <motion.span 
                initial={{ opacity: 0, scale: 0.5, y: 10 }}
-               animate={isDone ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.5, y: 10 }} 
-               transition={{ duration: 0.4, type: "spring", bounce: 0.4 }} 
+               animate={isInView ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.5, y: 10 }} 
+               transition={{ duration: 0.4, delay: 0.8, type: "spring", bounce: 0.4 }} 
                className="text-[8px] font-bold text-green-500 uppercase mt-0.5 px-2 py-0.5 bg-green-500/10 rounded-full border border-green-500/20"
              >
                 Good
@@ -109,7 +82,7 @@ const AQIVisual = ({ isHovered }) => {
              <motion.div 
                key={i} 
                initial={{ height: "10%" }}
-               animate={isHovered ? { height: ["10%", `${h}%`, `${Math.max(10, h-10)}%`, `${h}%`] } : { height: `${h}%` }} 
+               animate={isHovered && isInView ? { height: ["10%", `${h}%`, `${Math.max(10, h-10)}%`, `${h}%`] } : { height: `${h}%` }} 
                transition={isHovered ? { duration: 2, delay: i * 0.08, repeat: Infinity, ease: "easeInOut" } : { duration: 0 }} 
                className="flex-1 bg-gradient-to-t from-primary/20 to-primary rounded-t-sm" 
              />
@@ -117,24 +90,24 @@ const AQIVisual = ({ isHovered }) => {
        </div>
     </div>
   );
-};
+});
 
-const AISmokeVisual = () => {
-  const [confidence, setConfidence] = useState(0);
+AQIVisual.displayName = 'AQIVisual';
 
-  useEffect(() => {
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 2;
-      if (current >= 98) {
-        current = 98;
-        clearInterval(interval);
-      }
-      setConfidence(current);
-    }, 40);
-    return () => clearInterval(interval);
-  }, []);
+const smokeOffsets = [
+  { x: 0, delay: 0 },
+  { x: 12, delay: 0.25 },
+  { x: -15, delay: 0.5 },
+  { x: 8, delay: 0.75 },
+  { x: -10, delay: 1.0 },
+  { x: 18, delay: 1.25 },
+  { x: -8, delay: 1.5 },
+  { x: 14, delay: 1.75 },
+  { x: -18, delay: 2.0 },
+  { x: 5, delay: 2.25 },
+];
 
+const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
   return (
     <div className="w-full h-full relative flex items-center justify-center opacity-95 pointer-events-none group-hover:scale-[1.05] group-hover:-translate-y-2 transition-all duration-700">
       {/* Container simulating a Live Camera Monitor */}
@@ -142,11 +115,11 @@ const AISmokeVisual = () => {
         
         {/* Badges on the feed */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-30">
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur px-2 py-1 rounded border border-white/10">
+          <div className="flex items-center gap-1.5 bg-black/85 px-2 py-1 rounded border border-white/10">
             <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
             <span className="text-[7px] text-white font-bold tracking-widest uppercase">Live Camera Feed</span>
           </div>
-          <div className="flex items-center gap-1.5 bg-primary/20 backdrop-blur px-2 py-1 rounded border border-primary/30">
+          <div className="flex items-center gap-1.5 bg-blue-950/85 px-2 py-1 rounded border border-primary/30">
             <Activity className="w-3 h-3 text-primary" />
             <span className="text-[7px] text-primary font-bold tracking-widest uppercase">Monitoring...</span>
           </div>
@@ -163,7 +136,7 @@ const AISmokeVisual = () => {
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="w-full flex-1 border-b border-primary/20 flex gap-1.5 justify-center items-center pb-1">
                     {[...Array(3)].map((_, j) => (
-                      <div key={`b1-${i}-${j}`} className="w-2 h-3 bg-primary/60 rounded-[1px]" style={{ opacity: Math.random() * 0.6 + 0.1, boxShadow: '0 0 6px rgba(47,128,237,0.4)' }}></div>
+                      <div key={`b1-${i}-${j}`} className="w-2 h-3 bg-primary/60 rounded-[1px]" style={{ opacity: 0.2 + ((i + j) % 5) * 0.15, boxShadow: '0 0 6px rgba(47,128,237,0.4)' }}></div>
                     ))}
                   </div>
                 ))}
@@ -186,7 +159,7 @@ const AISmokeVisual = () => {
 
              <div className="w-full h-full mt-6 grid grid-cols-4 gap-1 p-2">
                 {[...Array(12)].map((_, i) => (
-                  <div key={`b2-${i}`} className="w-full h-3.5 bg-primary/50 rounded-[1px]" style={{ opacity: Math.random() * 0.7 + 0.2, boxShadow: '0 0 4px rgba(47,128,237,0.3)' }}></div>
+                  <div key={`b2-${i}`} className="w-full h-3.5 bg-primary/50 rounded-[1px]" style={{ opacity: 0.3 + (i % 4) * 0.18, boxShadow: '0 0 4px rgba(47,128,237,0.3)' }}></div>
                 ))}
              </div>
           </div>
@@ -196,49 +169,49 @@ const AISmokeVisual = () => {
              <div className="absolute top-[-12px] left-0 w-full h-[12px] bg-[#181f30] border-t border-primary/50" style={{ clipPath: 'polygon(0 100%, 100% 100%, 80% 0, 0 0)' }}></div>
              <div className="w-full h-full flex flex-col justify-around p-2 mt-1">
                 {[...Array(6)].map((_, i) => (
-                  <div key={`b3-${i}`} className="w-full h-[2px] bg-primary/60 rounded-full" style={{ opacity: Math.random() * 0.8 + 0.2, boxShadow: '0 0 8px rgba(47,128,237,0.6)' }}></div>
+                  <div key={`b3-${i}`} className="w-full h-[2px] bg-primary/60 rounded-full" style={{ opacity: 0.3 + (i % 3) * 0.25, boxShadow: '0 0 8px rgba(47,128,237,0.6)' }}></div>
                 ))}
              </div>
           </div>
         </div>
         
         {/* Smoke particles (Aligned to Main Chimney) */}
-        {[...Array(10)].map((_, i) => (
+        {smokeOffsets.map((smoke, i) => (
           <motion.div
             key={`smoke-${i}`}
-            animate={{ y: [-20, -140], x: [0, Math.random() * 50 - 25], opacity: [0, 0.7, 0], scale: [1, 3.5] }}
-            transition={{ duration: 3.5, repeat: Infinity, delay: i * 0.25 }}
-            className="absolute top-[25%] left-[40%] w-8 h-8 bg-gray-300 rounded-full blur-md mix-blend-screen"
+            animate={isInView ? { y: [-20, -140], x: [0, smoke.x], opacity: [0, 0.7, 0], scale: [1, 3.5] } : { opacity: 0 }}
+            transition={{ duration: 3.5, repeat: Infinity, delay: smoke.delay }}
+            className="absolute top-[25%] left-[40%] w-8 h-8 bg-gray-300 rounded-full blur-md mix-blend-screen transform-gpu"
           />
         ))}
         
         {/* Blue AI Bounding Box (Aligned to smoke plume) */}
         <motion.div 
-          animate={{ 
+          animate={isInView ? { 
             opacity: [0.6, 1, 0.6], 
             scale: [0.99, 1.02, 0.99],
             x: [0, 4, -2, 0],
             y: [0, -3, 2, 0]
-          }}
+          } : { opacity: 0.8 }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
           className="absolute top-[5%] left-[33%] w-[100px] h-[140px] border-[1.5px] border-primary bg-primary/10 z-20 shadow-[0_0_15px_rgba(47,128,237,0.2)]"
         >
           {/* Label Attached ABOVE */}
-          <div className="absolute -top-[22px] left-[-1.5px] text-[7px] text-primary font-black bg-blue-900/90 backdrop-blur px-2 py-1 flex items-center gap-1.5 border border-primary/50 shadow-md uppercase tracking-wider">
+          <div className="absolute -top-[22px] left-[-1.5px] text-[7px] text-primary font-black bg-blue-900 px-2 py-1 flex items-center gap-1.5 border border-primary/50 shadow-md uppercase tracking-wider">
             <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
             Smoke Detected
           </div>
 
           {/* Localized Scanning Line */}
           <motion.div
-            animate={{ top: ['0%', '100%', '0%'] }}
+            animate={isInView ? { top: ['0%', '100%', '0%'] } : { top: '50%' }}
             transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             className="absolute left-0 w-full h-[1.5px] bg-accent shadow-[0_0_12px_#6FC8FF]"
           />
 
           {/* Confidence Badge INSIDE Bottom Right */}
-          <div className="absolute bottom-1 right-1 text-[8px] text-white font-black bg-primary/90 backdrop-blur px-1.5 py-0.5 rounded-sm shadow-md">
-            {confidence}% Conf
+          <div className="absolute bottom-1 right-1 text-[8px] text-white font-black bg-primary px-1.5 py-0.5 rounded-sm shadow-md">
+            98% Conf
           </div>
 
           {/* Bounding box corners */}
@@ -251,18 +224,31 @@ const AISmokeVisual = () => {
         {/* Tiny AI Processing indicator on the side */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1 opacity-70">
            <div className="flex gap-0.5">
-             <motion.div animate={{ height: [4, 10, 4] }} transition={{ duration: 1, repeat: Infinity }} className="w-1 bg-primary rounded-full" />
-             <motion.div animate={{ height: [4, 12, 4] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-1 bg-primary rounded-full" />
-             <motion.div animate={{ height: [4, 8, 4] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-1 bg-primary rounded-full" />
+             <motion.div animate={isInView ? { height: [4, 10, 4] } : { height: 6 }} transition={{ duration: 1, repeat: Infinity }} className="w-1 bg-primary rounded-full" />
+             <motion.div animate={isInView ? { height: [4, 12, 4] } : { height: 8 }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-1 bg-primary rounded-full" />
+             <motion.div animate={isInView ? { height: [4, 8, 4] } : { height: 6 }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-1 bg-primary rounded-full" />
            </div>
            <span className="text-[6px] text-white font-mono uppercase ml-1">Processing</span>
         </div>
       </div>
     </div>
   );
-};
+});
 
-const EvidenceVisual = () => (
+AISmokeVisual.displayName = 'AISmokeVisual';
+
+const evidenceSmokeOffsets = [
+  { x: 0, delay: 0 },
+  { x: 14, delay: 0.4 },
+  { x: -16, delay: 0.8 },
+  { x: 10, delay: 1.2 },
+  { x: -12, delay: 1.6 },
+  { x: 18, delay: 2.0 },
+  { x: -8, delay: 2.4 },
+  { x: 12, delay: 2.8 },
+];
+
+const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
   <div className="relative w-[95%] h-[95%] bg-gray-900 rounded-2xl border border-gray-700 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden group-hover:scale-[1.03] group-hover:-translate-y-2 transition-transform duration-500 pointer-events-none">
     
     {/* Realistic Industrial Scene Background */}
@@ -289,12 +275,12 @@ const EvidenceVisual = () => (
        <div className="absolute bottom-0 right-[22%] w-8 h-14 bg-green-900/40 rounded-t-full blur-[1px]"></div>
        
        {/* Animated Smoke */}
-       {[...Array(8)].map((_, i) => (
+       {evidenceSmokeOffsets.map((smoke, i) => (
           <motion.div
             key={`es-${i}`}
-            animate={{ y: [-10, -120], x: [0, Math.random() * 50 - 25], opacity: [0, 0.7, 0], scale: [1, 4] }}
-            transition={{ duration: 4, repeat: Infinity, delay: i * 0.4 }}
-            className="absolute top-[40%] left-[34%] w-10 h-10 bg-gray-400 rounded-full blur-md mix-blend-screen"
+            animate={isInView ? { y: [-10, -120], x: [0, smoke.x], opacity: [0, 0.7, 0], scale: [1, 4] } : { opacity: 0 }}
+            transition={{ duration: 4, repeat: Infinity, delay: smoke.delay }}
+            className="absolute top-[40%] left-[34%] w-10 h-10 bg-gray-400 rounded-full blur-md mix-blend-screen transform-gpu"
           />
        ))}
     </div>
@@ -333,7 +319,7 @@ const EvidenceVisual = () => (
 
        {/* AI Detection Bounding Box */}
        <motion.div 
-          animate={{ opacity: [0.6, 1, 0.6], scale: [0.98, 1.02, 0.98] }}
+          animate={isInView ? { opacity: [0.6, 1, 0.6], scale: [0.98, 1.02, 0.98] } : { opacity: 0.8 }}
           transition={{ duration: 1.5, repeat: Infinity }}
           className="absolute top-[20%] left-[25%] w-[150px] h-[130px] border-[2px] border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)] z-30 flex flex-col justify-between p-1.5"
        >
@@ -353,11 +339,11 @@ const EvidenceVisual = () => (
        {/* TOP HUD ELEMENTS */}
        <div className="flex justify-between items-start z-30">
           <div className="flex flex-col gap-1.5">
-             <div className="flex items-center gap-2 bg-black/60 backdrop-blur px-2.5 py-1.5 rounded shadow-lg border border-white/5">
+             <div className="flex items-center gap-2 bg-black/85 px-2.5 py-1.5 rounded shadow-lg border border-white/5">
                 <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]" />
                 <span className="font-bold text-red-500 text-[9px]">REC LIVE</span>
              </div>
-             <div className="bg-black/40 backdrop-blur px-2 py-1 rounded w-max text-white/90 text-[7px] border border-white/10">
+             <div className="bg-black/80 px-2 py-1 rounded w-max text-white/90 text-[7px] border border-white/10">
                 ESP32-CAM CONNECTED
              </div>
              <div className="flex gap-1 mt-0.5">
@@ -366,7 +352,7 @@ const EvidenceVisual = () => (
              </div>
           </div>
 
-          <div className="flex flex-col items-end gap-1.5 text-right bg-black/50 backdrop-blur p-2 rounded border border-white/5 shadow-lg">
+          <div className="flex flex-col items-end gap-1.5 text-right bg-black/80 p-2 rounded border border-white/5 shadow-lg">
              <div className="flex items-center gap-1.5 text-white/90">
                 <MapPin className="w-3 h-3 text-primary animate-pulse" />
                 <span className="text-[8px] font-bold">34.0522° N, 118.2437° W</span>
@@ -381,9 +367,9 @@ const EvidenceVisual = () => (
        <div className="flex justify-between items-end z-30">
           
           {/* Cloud Upload Progress Sequence */}
-          <div className="w-36 h-10 bg-black/70 backdrop-blur rounded-lg border border-white/10 relative overflow-hidden shadow-xl">
+          <div className="w-36 h-10 bg-black/85 rounded-lg border border-white/10 relative overflow-hidden shadow-xl">
              {/* Uploading State */}
-             <motion.div animate={{ opacity: [1, 1, 0, 0, 1] }} transition={{ duration: 5, repeat: Infinity }} className="absolute inset-0 p-2 flex flex-col justify-center gap-1.5">
+             <motion.div animate={isInView ? { opacity: [1, 1, 0, 0, 1] } : { opacity: 1 }} transition={{ duration: 5, repeat: Infinity }} className="absolute inset-0 p-2 flex flex-col justify-center gap-1.5">
                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-primary">
                      <Cloud className="w-3.5 h-3.5 animate-pulse" />
@@ -392,12 +378,12 @@ const EvidenceVisual = () => (
                   <span className="text-[7px] text-white/80">92%</span>
                </div>
                <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                  <motion.div animate={{ width: ["0%", "100%", "100%", "0%"] }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} className="h-full bg-gradient-to-r from-primary to-accent" />
+                  <motion.div animate={isInView ? { width: ["0%", "100%", "100%", "0%"] } : { width: "92%" }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} className="h-full bg-gradient-to-r from-primary to-accent" />
                </div>
              </motion.div>
              
              {/* Upload Complete State */}
-             <motion.div animate={{ opacity: [0, 0, 1, 1, 0] }} transition={{ duration: 5, repeat: Infinity }} className="absolute inset-0 flex items-center justify-center gap-1.5 bg-green-500/20 border border-green-500/30">
+             <motion.div animate={isInView ? { opacity: [0, 0, 1, 1, 0] } : { opacity: 0 }} transition={{ duration: 5, repeat: Infinity }} className="absolute inset-0 flex items-center justify-center gap-1.5 bg-green-500/20 border border-green-500/30">
                 <ShieldCheck className="w-4 h-4 text-green-400" />
                 <span className="font-bold text-[9px] text-green-400">Evidence Saved</span>
              </motion.div>
@@ -405,10 +391,10 @@ const EvidenceVisual = () => (
 
           {/* Secure Evidence / Recording Timer */}
           <div className="flex flex-col items-end gap-1.5">
-             <div className="text-[16px] font-black text-red-500 drop-shadow-md tracking-widest bg-black/40 px-2 py-0.5 rounded backdrop-blur">
+             <div className="text-[16px] font-black text-red-500 drop-shadow-md tracking-widest bg-black/80 px-2 py-0.5 rounded">
                 00:04:12
              </div>
-             <div className="flex items-center gap-1 bg-green-500/20 border border-green-500/40 text-green-400 px-2.5 py-1 rounded backdrop-blur font-bold text-[8px] shadow-lg">
+             <div className="flex items-center gap-1 bg-emerald-950/80 border border-green-500/40 text-green-400 px-2.5 py-1 rounded font-bold text-[8px] shadow-lg">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 SECURE EVIDENCE
              </div>
@@ -417,9 +403,11 @@ const EvidenceVisual = () => (
 
     </div>
   </div>
-);
+));
 
-const AlertVisual = ({ isHovered }) => {
+EvidenceVisual.displayName = 'EvidenceVisual';
+
+const AlertVisual = memo(({ isHovered, isInView = true }) => {
   const animateState = isHovered ? "active" : "idle";
 
   const nodeVariants = {
@@ -452,13 +440,13 @@ const AlertVisual = ({ isHovered }) => {
           <div className="relative w-full h-full">
              
              {/* MQ135 Node */}
-             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 0 }} className="absolute top-[65px] left-[35px] w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center shadow-lg z-10 backdrop-blur-sm">
+             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 0 }} className="absolute top-[65px] left-[35px] w-12 h-12 rounded-full border-2 bg-white flex flex-col items-center justify-center shadow-lg z-10">
                 <Activity className="w-4 h-4 text-primary" />
                 <span className="text-[6px] font-bold text-gray-600 mt-0.5">MQ135</span>
              </motion.div>
 
              {/* AI Verify Node */}
-             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 0.4 }} className="absolute top-[65px] left-[110px] w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center shadow-lg z-10 backdrop-blur-sm">
+             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 0.4 }} className="absolute top-[65px] left-[110px] w-12 h-12 rounded-full border-2 bg-white flex flex-col items-center justify-center shadow-lg z-10">
                 <Cloud className="w-4 h-4 text-primary" />
                 <span className="text-[6px] font-bold text-gray-600 mt-0.5">AI VERIFY</span>
              </motion.div>
@@ -467,23 +455,23 @@ const AlertVisual = ({ isHovered }) => {
              <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 0.8 }} className="absolute top-[60px] left-[175px] w-14 h-14 rounded-full border-2 border-red-500 bg-red-50 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.4)] z-10" style={{ borderColor: isHovered ? 'rgba(239,68,68,1)' : 'rgba(239,68,68,0.5)' }}>
                 <Bell className="w-5 h-5 text-red-500" />
                 <span className="text-[6px] font-black text-red-600 mt-0.5">ALERT</span>
-                {isHovered && <motion.div animate={{ scale: [1, 1.5, 2], opacity: [0.8, 0.4, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 rounded-full border border-red-500" />}
+                {isHovered && isInView && <motion.div animate={{ scale: [1, 1.5, 2], opacity: [0.8, 0.4, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 rounded-full border border-red-500" />}
              </motion.div>
 
              {/* Dashboard Node */}
-             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 1.0 }} className="absolute top-[120px] left-[195px] w-10 h-10 rounded-full border-2 flex flex-col items-center justify-center shadow-lg z-10 backdrop-blur-sm">
+             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 1.0 }} className="absolute top-[120px] left-[195px] w-10 h-10 rounded-full border-2 bg-white flex flex-col items-center justify-center shadow-lg z-10">
                 <LayoutDashboard className="w-3.5 h-3.5 text-primary" />
                 <span className="text-[5px] font-bold text-gray-600 mt-0.5">DASH</span>
              </motion.div>
 
              {/* Email/SMS Node */}
-             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 1.2 }} className="absolute top-[35px] left-[245px] w-10 h-10 rounded-full border-2 flex flex-col items-center justify-center shadow-lg z-10 backdrop-blur-sm">
+             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 1.2 }} className="absolute top-[35px] left-[245px] w-10 h-10 rounded-full border-2 bg-white flex flex-col items-center justify-center shadow-lg z-10">
                 <FileText className="w-3.5 h-3.5 text-primary" />
                 <span className="text-[5px] font-bold text-gray-600 mt-0.5">SMS/EMAIL</span>
              </motion.div>
 
              {/* Authorities Node */}
-             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 1.4 }} className="absolute top-[90px] left-[285px] w-10 h-10 rounded-full border-2 flex flex-col items-center justify-center shadow-lg z-10 backdrop-blur-sm">
+             <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 1.4 }} className="absolute top-[90px] left-[285px] w-10 h-10 rounded-full border-2 bg-white flex flex-col items-center justify-center shadow-lg z-10">
                 <Users className="w-3.5 h-3.5 text-primary" />
                 <span className="text-[5px] font-bold text-gray-600 mt-0.5">AGENCY</span>
              </motion.div>
@@ -495,7 +483,7 @@ const AlertVisual = ({ isHovered }) => {
          initial={{ y: 150, opacity: 0, rotateX: 20 }}
          animate={isHovered ? { y: 0, opacity: 1, rotateX: 0 } : { y: 150, opacity: 0, rotateX: 20 }}
          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.8 }}
-         className="w-[85%] bg-white/90 backdrop-blur-2xl rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.12)] border border-red-100 p-4 z-20 relative overflow-hidden"
+         className="w-[85%] bg-white/95 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.12)] border border-red-100 p-4 z-20 relative overflow-hidden"
        >
           <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
           
@@ -537,22 +525,24 @@ const AlertVisual = ({ isHovered }) => {
           {/* WebSocket Syncing Indicator */}
           <motion.div initial={{ opacity: 0 }} animate={isHovered ? { opacity: 1 } : { opacity: 0 }} transition={{ delay: 1.6 }} className="pl-2 mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
              <div className="flex items-center gap-1.5">
-                <motion.div animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }} className="w-1.5 h-1.5 bg-primary rounded-full" />
+                <motion.div animate={isHovered && isInView ? { scale: [1, 1.5, 1], opacity: [1, 0.5, 1] } : {}} transition={{ duration: 1, repeat: Infinity }} className="w-1.5 h-1.5 bg-primary rounded-full" />
                 <span className="text-[7px] font-bold text-primary uppercase tracking-widest">WebSocket Sync Active</span>
              </div>
              <div className="flex gap-1">
                 <div className="w-4 h-1.5 bg-gray-200 rounded-full overflow-hidden relative">
-                   <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-primary" />
+                   <motion.div animate={isHovered && isInView ? { x: ["-100%", "100%"] } : {}} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-primary" />
                 </div>
              </div>
           </motion.div>
        </motion.div>
     </div>
   );
-};
+});
 
-const GISVisual = ({ isHovered }) => (
-  <div className="relative w-full h-full overflow-hidden rounded-2xl pointer-events-none perspective-[1200px]">
+AlertVisual.displayName = 'AlertVisual';
+
+const GISVisual = memo(({ isHovered, isInView = true }) => (
+  <div className="relative w-full h-full overflow-hidden rounded-2xl pointer-events-none">
      
      {/* 3D Map Container */}
      <motion.div 
@@ -594,7 +584,7 @@ const GISVisual = ({ isHovered }) => (
         </svg>
 
         {/* Data Packets flowing */}
-        {isHovered && (
+        {isHovered && isInView && (
            <>
               <motion.div animate={{ top: ["35%", "45%"], left: ["20%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#2F80ED] -translate-x-1/2 -translate-y-1/2" />
               <motion.div animate={{ top: ["70%", "45%"], left: ["35%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "linear", delay: 0.3 }} className="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#2F80ED] -translate-x-1/2 -translate-y-1/2" />
@@ -603,15 +593,15 @@ const GISVisual = ({ isHovered }) => (
         )}
 
         {/* 3D Buildings Abstraction */}
-        <div className="absolute top-[40%] left-[30%] w-12 h-16 bg-white/80 backdrop-blur border border-white/50 shadow-[5px_5px_15px_rgba(0,0,0,0.08)] rounded-sm" />
-        <div className="absolute top-[48%] left-[45%] w-10 h-24 bg-white/90 backdrop-blur border border-white/50 shadow-[5px_5px_15px_rgba(0,0,0,0.1)] rounded-sm" />
-        <div className="absolute top-[28%] left-[55%] w-16 h-12 bg-white/70 backdrop-blur border border-white/40 shadow-[5px_5px_15px_rgba(0,0,0,0.05)] rounded-sm" />
-        <div className="absolute top-[18%] left-[68%] w-20 h-16 bg-gray-100/80 backdrop-blur border border-gray-200/50 shadow-[5px_5px_15px_rgba(0,0,0,0.08)] rounded-sm" />
-        <div className="absolute top-[25%] left-[75%] w-12 h-20 bg-gray-100/90 backdrop-blur border border-gray-200/50 shadow-[5px_5px_15px_rgba(0,0,0,0.1)] rounded-sm" />
+        <div className="absolute top-[40%] left-[30%] w-12 h-16 bg-white/90 border border-white/50 shadow-[5px_5px_15px_rgba(0,0,0,0.08)] rounded-sm" />
+        <div className="absolute top-[48%] left-[45%] w-10 h-24 bg-white/95 border border-white/50 shadow-[5px_5px_15px_rgba(0,0,0,0.1)] rounded-sm" />
+        <div className="absolute top-[28%] left-[55%] w-16 h-12 bg-white/85 border border-white/40 shadow-[5px_5px_15px_rgba(0,0,0,0.05)] rounded-sm" />
+        <div className="absolute top-[18%] left-[68%] w-20 h-16 bg-gray-100/90 border border-gray-200/50 shadow-[5px_5px_15px_rgba(0,0,0,0.08)] rounded-sm" />
+        <div className="absolute top-[25%] left-[75%] w-12 h-20 bg-gray-100/95 border border-gray-200/50 shadow-[5px_5px_15px_rgba(0,0,0,0.1)] rounded-sm" />
 
         {/* Pollution Heatmap overlay */}
         <motion.div 
-          animate={isHovered ? { opacity: [0, 0.8, 0], scale: [0.9, 1.1, 0.9] } : { opacity: 0 }}
+          animate={isHovered && isInView ? { opacity: [0, 0.8, 0], scale: [0.9, 1.1, 0.9] } : { opacity: 0 }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           className="absolute top-[10%] left-[55%] w-48 h-48 bg-red-500/30 rounded-full blur-3xl pointer-events-none"
         />
@@ -620,13 +610,13 @@ const GISVisual = ({ isHovered }) => (
         
         {/* Green Sensor */}
         <div className="absolute top-[35%] left-[20%] -translate-x-1/2 -translate-y-1/2">
-           <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-green-500 rounded-full blur-sm" />
+           {isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-green-500 rounded-full blur-sm" />}
            <div className="relative z-10 w-3 h-3 bg-green-500 border-[1.5px] border-white rounded-full shadow-lg" />
         </div>
         
         {/* Yellow Sensor */}
         <div className="absolute top-[70%] left-[35%] -translate-x-1/2 -translate-y-1/2">
-           <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }} className="absolute inset-0 bg-yellow-400 rounded-full blur-sm" />
+           {isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }} className="absolute inset-0 bg-yellow-400 rounded-full blur-sm" />}
            <div className="relative z-10 w-3 h-3 bg-yellow-400 border-[1.5px] border-white rounded-full shadow-lg" />
         </div>
 
@@ -636,17 +626,19 @@ const GISVisual = ({ isHovered }) => (
               <div className="w-1.5 h-1.5 bg-white rounded-full" />
            </div>
            {/* Radar Sweep */}
-           <motion.div 
-             animate={{ rotate: 360 }} 
-             transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-             className="absolute top-1/2 left-1/2 w-48 h-48 -translate-x-1/2 -translate-y-1/2 origin-center rounded-full pointer-events-none"
-             style={{ background: 'conic-gradient(from 0deg, transparent 80%, rgba(47,128,237,0.4) 100%)' }}
-           />
+           {isInView && (
+             <motion.div 
+               animate={{ rotate: 360 }} 
+               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+               className="absolute top-1/2 left-1/2 w-48 h-48 -translate-x-1/2 -translate-y-1/2 origin-center rounded-full pointer-events-none"
+               style={{ background: 'conic-gradient(from 0deg, transparent 80%, rgba(47,128,237,0.4) 100%)' }}
+             />
+           )}
         </div>
 
         {/* Red Hotspot Sensor */}
         <div className="absolute top-[22%] left-[70%] -translate-x-1/2 -translate-y-1/2 z-20">
-           <motion.div animate={{ scale: [1, 3.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-red-500 rounded-full blur-[2px]" />
+           {isInView && <motion.div animate={{ scale: [1, 3.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-red-500 rounded-full blur-[2px]" />}
            <div className="relative z-10 w-4 h-4 bg-red-500 border-[2px] border-white rounded-full shadow-[0_0_15px_red]" />
         </div>
 
@@ -659,7 +651,7 @@ const GISVisual = ({ isHovered }) => (
        initial={{ y: 20, opacity: 0, scale: 0.9 }}
        animate={isHovered ? { y: 0, opacity: 1, scale: 1 } : { y: 20, opacity: 0, scale: 0.9 }}
        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.6 }}
-       className="absolute top-[8%] right-[8%] bg-white/95 backdrop-blur-xl border border-red-200 shadow-[0_15px_35px_rgba(0,0,0,0.15)] rounded-2xl p-3.5 z-30 w-44"
+       className="absolute top-[8%] right-[8%] bg-white/95 border border-red-200 shadow-[0_15px_35px_rgba(0,0,0,0.15)] rounded-2xl p-3.5 z-30 w-44"
      >
         <div className="flex items-center gap-2 mb-2.5 border-b border-gray-100 pb-2.5">
            <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_red]" />
@@ -684,7 +676,7 @@ const GISVisual = ({ isHovered }) => (
        initial={{ x: -30, opacity: 0 }}
        animate={isHovered ? { x: 0, opacity: 1 } : { x: -30, opacity: 0 }}
        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.8 }}
-       className="absolute bottom-[28%] left-[6%] bg-white/95 backdrop-blur-xl border border-gray-200 shadow-xl rounded-2xl p-3 z-30 flex items-center gap-4"
+       className="absolute bottom-[28%] left-[6%] bg-white/95 border border-gray-200 shadow-xl rounded-2xl p-3 z-30 flex items-center gap-4"
      >
         <div className="flex flex-col gap-1.5">
            <div className="flex items-center justify-between gap-5">
@@ -708,7 +700,7 @@ const GISVisual = ({ isHovered }) => (
        initial={{ y: 30, opacity: 0 }}
        animate={isHovered ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.4 }}
-       className="absolute bottom-[6%] right-[6%] bg-blue-900/95 backdrop-blur-xl border border-blue-700 shadow-2xl rounded-2xl p-2.5 z-30 flex items-center gap-4 text-white"
+       className="absolute bottom-[6%] right-[6%] bg-blue-900/95 border border-blue-700 shadow-2xl rounded-2xl p-2.5 z-30 flex items-center gap-4 text-white"
      >
         <div className="flex items-center gap-2 px-2 border-r border-blue-700/60">
            <Map className="w-4 h-4 text-blue-400" />
@@ -727,37 +719,11 @@ const GISVisual = ({ isHovered }) => (
      </motion.div>
      
   </div>
-);
+));
 
-const SatelliteVisual = ({ isHovered }) => {
-  const [aqi, setAqi] = useState(0);
-  const [coverage, setCoverage] = useState(0);
+GISVisual.displayName = 'GISVisual';
 
-  useEffect(() => {
-    if (isHovered) {
-      let aqiStart = 0;
-      let covStart = 0;
-      
-      const interval = setInterval(() => {
-        if (aqiStart < 184) aqiStart += 4;
-        if (aqiStart > 184) aqiStart = 184;
-        setAqi(aqiStart);
-        
-        if (covStart < 98) covStart += 2;
-        if (covStart > 98) covStart = 98;
-        setCoverage(covStart);
-
-        if (aqiStart >= 184 && covStart >= 98) {
-          clearInterval(interval);
-        }
-      }, 35);
-      return () => clearInterval(interval);
-    } else {
-      setAqi(184);
-      setCoverage(98);
-    }
-  }, [isHovered]);
-
+const SatelliteVisual = memo(({ isHovered, isInView = true }) => {
   return (
     <div className="relative w-full h-full overflow-hidden rounded-2xl pointer-events-none bg-[#0B1426]">
        
@@ -801,7 +767,7 @@ const SatelliteVisual = ({ isHovered }) => {
        {/* Animated Pollution Heatmap Overlay */}
        <motion.div 
          initial={{ opacity: 0 }}
-         animate={isHovered ? { opacity: [0, 0.8, 0.6, 0.8] } : { opacity: 0 }}
+         animate={isHovered && isInView ? { opacity: [0, 0.8, 0.6, 0.8] } : { opacity: 0 }}
          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
          className="absolute inset-0 z-10"
        >
@@ -823,7 +789,7 @@ const SatelliteVisual = ({ isHovered }) => {
        </motion.div>
 
        {/* Animated Markers & Glowing Particles */}
-       {isHovered && (
+       {isHovered && isInView && (
           <div className="absolute inset-0 z-20">
              {/* Hotspot 1 Marker */}
              <div className="absolute top-[30%] right-[20%] -translate-x-1/2 -translate-y-1/2">
@@ -844,7 +810,7 @@ const SatelliteVisual = ({ isHovered }) => {
        )}
 
        {/* Satellite Scanning Beam Overlay */}
-       {isHovered && (
+       {isHovered && isInView && (
           <motion.div 
             animate={{ left: ['-100%', '200%'] }} 
             transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} 
@@ -862,11 +828,11 @@ const SatelliteVisual = ({ isHovered }) => {
          initial={{ y: -20, opacity: 0 }}
          animate={isHovered ? { y: 0, opacity: 1 } : { y: -20, opacity: 0 }}
          transition={{ type: "spring", delay: 0.2 }}
-         className="absolute top-[8%] left-[8%] bg-[#0B1426]/90 backdrop-blur-md border border-primary/30 rounded-xl p-2.5 z-30 flex items-center gap-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+         className="absolute top-[8%] left-[8%] bg-[#0B1426]/95 border border-primary/30 rounded-xl p-2.5 z-30 flex items-center gap-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
        >
           <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center border border-primary/50 relative">
              <Navigation className="w-4 h-4 text-primary" />
-             <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 rounded-full border border-primary/30 border-t-transparent" />
+             {isHovered && isInView && <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 rounded-full border border-primary/30 border-t-transparent" />}
           </div>
           <div>
              <div className="text-[7px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
@@ -882,7 +848,7 @@ const SatelliteVisual = ({ isHovered }) => {
          initial={{ opacity: 0 }}
          animate={isHovered ? { opacity: 1 } : { opacity: 0 }}
          transition={{ delay: 1 }}
-         className="absolute top-[8%] right-[8%] bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 z-30 flex items-center gap-2"
+         className="absolute top-[8%] right-[8%] bg-black/80 border border-white/10 rounded-full px-3 py-1.5 z-30 flex items-center gap-2"
        >
           <Cloud className="w-3 h-3 text-white/60" />
           <span className="text-[8px] font-bold text-white/80 tracking-widest uppercase">Analyzing Data...</span>
@@ -893,13 +859,13 @@ const SatelliteVisual = ({ isHovered }) => {
          initial={{ y: 50, opacity: 0 }}
          animate={isHovered ? { y: 0, opacity: 1 } : { y: 50, opacity: 0 }}
          transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.5 }}
-         className="absolute bottom-[6%] left-1/2 -translate-x-1/2 w-[85%] bg-white/95 backdrop-blur-2xl border border-gray-200 shadow-[0_20px_40px_rgba(0,0,0,0.15)] rounded-2xl p-4 z-30 flex justify-between items-center"
+         className="absolute bottom-[6%] left-1/2 -translate-x-1/2 w-[85%] bg-white/95 border border-gray-200 shadow-[0_20px_40px_rgba(0,0,0,0.15)] rounded-2xl p-4 z-30 flex justify-between items-center"
        >
           {/* Pollution Index */}
           <div className="flex flex-col">
              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pollution Index</span>
              <div className="flex items-baseline gap-1">
-                <span className="text-[28px] font-black text-red-600 leading-none">{aqi}</span>
+                <span className="text-[28px] font-black text-red-600 leading-none">184</span>
                 <span className="text-[10px] font-bold text-red-600">AQI</span>
              </div>
           </div>
@@ -922,43 +888,24 @@ const SatelliteVisual = ({ isHovered }) => {
           <div className="flex flex-col items-end">
              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Coverage</span>
              <div className="flex items-baseline gap-0.5 text-primary">
-                <span className="text-[20px] font-black leading-none">{coverage}</span>
+                <span className="text-[20px] font-black leading-none">98</span>
                 <span className="text-[12px] font-bold">%</span>
              </div>
              <div className="w-16 h-1 bg-primary/20 rounded-full mt-1.5 overflow-hidden">
-                <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: `${coverage}%` } : { width: "0%" }} transition={{ duration: 1.5, ease: "easeOut" }} className="h-full bg-primary" />
+                <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: "98%" } : { width: "0%" }} transition={{ duration: 1.5, ease: "easeOut" }} className="h-full bg-primary" />
              </div>
           </div>
        </motion.div>
 
     </div>
   );
-};
+});
 
-const DashboardVisual = ({ isHovered }) => {
-  const [aqi, setAqi] = useState(0);
-  const [sensors, setSensors] = useState(0);
+SatelliteVisual.displayName = 'SatelliteVisual';
 
-  useEffect(() => {
-    if (isHovered) {
-      let aqiStart = 0;
-      let sStart = 0;
-      const interval = setInterval(() => {
-        if (aqiStart < 38) aqiStart += 1;
-        if (sStart < 24) sStart += 1;
-        setAqi(aqiStart);
-        setSensors(sStart);
-        if (aqiStart >= 38 && sStart >= 24) clearInterval(interval);
-      }, 40);
-      return () => clearInterval(interval);
-    } else {
-      setAqi(38);
-      setSensors(24);
-    }
-  }, [isHovered]);
-
+const DashboardVisual = memo(({ isHovered, isInView = true }) => {
   return (
-    <div className="relative w-full h-full bg-white/90 backdrop-blur-2xl rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-4">
+    <div className="relative w-full h-full bg-white/95 rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-4">
        
        {/* TOP COMMAND BAR */}
        <div className="flex items-center justify-between border-b border-gray-100 pb-2.5 mb-3">
@@ -977,7 +924,7 @@ const DashboardVisual = ({ isHovered }) => {
              <div className="text-[8px] font-bold text-gray-400">2026-08-03 22:35 UTC</div>
              <div className="relative">
                 <Bell className="w-4 h-4 text-gray-400" />
-                {isHovered && <motion.div animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }} transition={{ duration: 1, repeat: Infinity }} className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-white" />}
+                {isHovered && isInView && <motion.div animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }} transition={{ duration: 1, repeat: Infinity }} className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-white" />}
              </div>
              <div className="w-6 h-6 bg-gradient-to-tr from-gray-200 to-gray-100 rounded-full border border-gray-300 shadow-inner flex items-center justify-center">
                 <Users className="w-3 h-3 text-gray-400" />
@@ -997,7 +944,7 @@ const DashboardVisual = ({ isHovered }) => {
                    <span className="text-[8px] font-black uppercase tracking-widest text-blue-700">City AQI Avg</span>
                 </div>
                 <div className="flex items-end gap-2">
-                   <span className="text-[28px] font-black text-blue-800 leading-none">{aqi}</span>
+                   <span className="text-[28px] font-black text-blue-800 leading-none">38</span>
                    <span className="text-[8px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded border border-green-200 mb-1">GOOD</span>
                 </div>
              </motion.div>
@@ -1008,7 +955,7 @@ const DashboardVisual = ({ isHovered }) => {
                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-600">Active Sensors</span>
                 </div>
                 <div className="flex items-end gap-2">
-                   <span className="text-[22px] font-black text-gray-800 leading-none">{sensors}</span>
+                   <span className="text-[22px] font-black text-gray-800 leading-none">24</span>
                    <span className="text-[7px] font-bold text-green-500 uppercase mb-0.5 flex items-center gap-1"><div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"/>Online</span>
                 </div>
              </motion.div>
@@ -1044,10 +991,12 @@ const DashboardVisual = ({ isHovered }) => {
                 </svg>
 
                 {/* Pollution Hotspot */}
-                <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[30%] left-[60%] w-24 h-24 bg-red-500 rounded-full blur-2xl" />
+                <motion.div animate={isInView ? { scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] } : { opacity: 0.4 }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[30%] left-[60%] w-24 h-24 bg-red-500 rounded-full blur-2xl" />
                 
                 {/* Radar Pulse around central station */}
-                <motion.div animate={{ scale: [0, 3], opacity: [0.6, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[50%] left-[40%] w-16 h-16 bg-primary rounded-full border border-primary/50 -translate-x-1/2 -translate-y-1/2" />
+                {isInView && (
+                  <motion.div animate={{ scale: [0, 3], opacity: [0.6, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[50%] left-[40%] w-16 h-16 bg-primary rounded-full border border-primary/50 -translate-x-1/2 -translate-y-1/2" />
+                )}
                 <div className="absolute top-[50%] left-[40%] w-2.5 h-2.5 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_#2F80ED]" />
 
                 {/* Sensor Pins */}
@@ -1056,7 +1005,7 @@ const DashboardVisual = ({ isHovered }) => {
                 <div className="absolute top-[35%] right-[35%]"><div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_10px_#ef4444] animate-pulse" /></div>
 
                 {/* Data Packets flowing to center */}
-                {isHovered && (
+                {isHovered && isInView && (
                    <motion.div animate={{ top: ["20%", "50%"], left: ["30%", "40%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_white] -translate-x-1/2 -translate-y-1/2" />
                 )}
              </div>
@@ -1097,14 +1046,14 @@ const DashboardVisual = ({ isHovered }) => {
                    </defs>
                    <motion.path 
                      initial={{ pathLength: 0 }} 
-                     animate={isHovered ? { pathLength: 1 } : { pathLength: 0 }} 
+                     animate={isHovered && isInView ? { pathLength: 1 } : { pathLength: 0 }} 
                      transition={{ duration: 2, ease: "easeInOut" }}
                      d="M 0 50 Q 15 40 25 55 T 50 30 T 75 60 T 100 20" 
                      fill="none" stroke="#2F80ED" strokeWidth="2.5" 
                    />
                    <motion.path 
                      initial={{ opacity: 0 }} 
-                     animate={isHovered ? { opacity: 1 } : { opacity: 0 }} 
+                     animate={isHovered && isInView ? { opacity: 1 } : { opacity: 0 }} 
                      transition={{ duration: 2, ease: "easeInOut", delay: 0.2 }}
                      d="M 0 50 Q 15 40 25 55 T 50 30 T 75 60 T 100 20 L 100 100 L 0 100 Z" 
                      fill="url(#chartGrad)" 
@@ -1116,7 +1065,7 @@ const DashboardVisual = ({ isHovered }) => {
              <div className="h-20 bg-gray-50 rounded-xl border border-gray-100 p-2 flex flex-col overflow-hidden relative shadow-sm">
                 <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest px-1 mb-1.5 z-10 bg-gray-50">Incident Feed</span>
                 <motion.div 
-                  animate={isHovered ? { y: [0, -60] } : { y: 0 }} 
+                  animate={isHovered && isInView ? { y: [0, -60] } : { y: 0 }} 
                   transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
                   className="flex flex-col gap-1.5"
                 >
@@ -1156,32 +1105,13 @@ const DashboardVisual = ({ isHovered }) => {
        </div>
     </div>
   );
-};
+});
 
-const AnalyticsVisual = ({ isHovered }) => {
-  const [aqi, setAqi] = useState(0);
-  const [improvement, setImprovement] = useState(0);
+DashboardVisual.displayName = 'DashboardVisual';
 
-  useEffect(() => {
-    if (isHovered) {
-      let aqiStart = 0;
-      let impStart = 0;
-      const interval = setInterval(() => {
-        if (aqiStart < 42) aqiStart += 1;
-        if (impStart < 12) impStart += 1;
-        setAqi(aqiStart);
-        setImprovement(impStart);
-        if (aqiStart >= 42 && impStart >= 12) clearInterval(interval);
-      }, 30);
-      return () => clearInterval(interval);
-    } else {
-      setAqi(42);
-      setImprovement(12);
-    }
-  }, [isHovered]);
-
+const AnalyticsVisual = memo(({ isHovered, isInView = true }) => {
   return (
-    <div className="relative w-full h-full bg-white/95 backdrop-blur-3xl rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-4 z-10">
+    <div className="relative w-full h-full bg-white/95 rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-4 z-10">
        
        {/* Background Grid */}
        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply" />
@@ -1191,7 +1121,7 @@ const AnalyticsVisual = ({ isHovered }) => {
           <div className="flex-1 bg-gradient-to-br from-blue-50/80 to-blue-50/30 rounded-xl border border-blue-100 p-2.5 shadow-[0_2px_10px_rgba(47,128,237,0.05)] flex flex-col relative overflow-hidden">
              <div className="absolute top-[-10px] right-[-10px] w-12 h-12 bg-primary/10 rounded-full blur-xl" />
              <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest mb-1 z-10">Average AQI</span>
-             <span className="text-[22px] font-black text-blue-800 leading-none z-10">{aqi}</span>
+             <span className="text-[22px] font-black text-blue-800 leading-none z-10">42</span>
           </div>
           <div className="flex-1 bg-gray-50/80 rounded-xl border border-gray-100 p-2.5 shadow-sm flex flex-col">
              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-1">Best Month</span>
@@ -1206,7 +1136,7 @@ const AnalyticsVisual = ({ isHovered }) => {
           <div className="flex-1 bg-gradient-to-br from-green-50/80 to-green-50/30 rounded-xl border border-green-100 p-2.5 shadow-sm flex flex-col relative overflow-hidden">
              <div className="absolute top-[-10px] right-[-10px] w-12 h-12 bg-green-500/10 rounded-full blur-xl" />
              <span className="text-[7px] font-black text-green-600 uppercase tracking-widest mb-1 z-10">Improvement</span>
-             <span className="text-[22px] font-black text-green-700 leading-none z-10">{improvement}%</span>
+             <span className="text-[22px] font-black text-green-700 leading-none z-10">12%</span>
           </div>
        </div>
 
@@ -1228,41 +1158,41 @@ const AnalyticsVisual = ({ isHovered }) => {
              <svg className="absolute inset-0 w-full h-full pt-4 pb-6 px-4 overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                 {/* AI Prediction Line */}
                 <motion.path 
-                  initial={{ opacity: 0 }}
-                  animate={isHovered ? { opacity: 0.6 } : { opacity: 0 }}
-                  transition={{ delay: 1, duration: 1 }}
+                  initial={{ opacity: 0 }} 
+                  animate={isHovered && isInView ? { opacity: 0.6 } : { opacity: 0 }} 
+                  transition={{ delay: 1, duration: 1 }} 
                   d="M 0 50 Q 20 40 40 45 T 80 30 T 100 20" 
                   fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" 
                 />
 
                 {/* Main Historical Data Line */}
                 <motion.path 
-                  initial={{ pathLength: 0 }}
-                  animate={isHovered ? { pathLength: 1 } : { pathLength: 0 }}
-                  transition={{ duration: 2, ease: "easeOut" }}
+                  initial={{ pathLength: 0 }} 
+                  animate={isHovered && isInView ? { pathLength: 1 } : { pathLength: 0 }} 
+                  transition={{ duration: 2, ease: "easeOut" }} 
                   d="M 0 70 C 15 70, 20 40, 30 35 C 40 30, 45 80, 50 85 C 60 90, 70 50, 80 45 C 90 40, 95 65, 100 70" 
                   fill="none" stroke="#2F80ED" strokeWidth="2.5" 
-                  className="drop-shadow-[0_4px_8px_rgba(47,128,237,0.5)]"
+                  className="drop-shadow-[0_4px_8px_rgba(47,128,237,0.5)]" 
                 />
 
                 {/* Hotspot Pulse (May peak, worst month) */}
-                {isHovered && (
+                {isHovered && isInView && (
                    <motion.circle 
                      cx="50" cy="85" r="2.5" fill="#ef4444" 
                      initial={{ scale: 0, opacity: 0 }} 
                      animate={{ scale: [1, 2.5, 1], opacity: [1, 0, 1] }} 
                      transition={{ duration: 2, repeat: Infinity, delay: 2.2 }} 
-                     className="drop-shadow-[0_0_8px_red]"
+                     className="drop-shadow-[0_0_8px_red]" 
                    />
                 )}
              </svg>
 
              {/* Chart Tooltips */}
              <motion.div 
-               initial={{ opacity: 0, y: 10, scale: 0.9 }}
-               animate={isHovered ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.9 }}
-               transition={{ delay: 2.4, type: "spring", stiffness: 300, damping: 20 }}
-               className="absolute top-[35%] left-[42%] bg-white/95 backdrop-blur shadow-xl border border-red-200 rounded-lg px-2.5 py-1.5 flex flex-col items-center z-10"
+               initial={{ opacity: 0, y: 10, scale: 0.9 }} 
+               animate={isHovered && isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.9 }} 
+               transition={{ delay: 2.4, type: "spring", stiffness: 300, damping: 20 }} 
+               className="absolute top-[35%] left-[42%] bg-white/95 backdrop-blur shadow-xl border border-red-200 rounded-lg px-2.5 py-1.5 flex flex-col items-center z-10" 
              >
                 <span className="text-[7px] font-black text-red-500 uppercase tracking-widest mb-0.5">May Peak</span>
                 <span className="text-[12px] font-black text-gray-800 leading-none">89 <span className="text-[8px] text-gray-500">AQI</span></span>
@@ -1275,9 +1205,9 @@ const AnalyticsVisual = ({ isHovered }) => {
                 {/* Scanning Progress Indicator */}
                 <motion.div 
                   initial={{ x: "-10%" }} 
-                  animate={isHovered ? { x: "900%" } : { x: "-10%" }} 
-                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                  className="absolute bottom-0 left-3 w-[2px] h-full bg-primary/40 shadow-[0_0_5px_#2F80ED]"
+                  animate={isHovered && isInView ? { x: "900%" } : { x: "-10%" }} 
+                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }} 
+                  className="absolute bottom-0 left-3 w-[2px] h-full bg-primary/40 shadow-[0_0_5px_#2F80ED]" 
                 />
              </div>
           </div>
@@ -1311,33 +1241,13 @@ const AnalyticsVisual = ({ isHovered }) => {
        </div>
     </div>
   );
-};
+});
 
-const CloudVisual = ({ isHovered }) => {
-  const [storage, setStorage] = useState(0);
-  const [files, setFiles] = useState(0);
+AnalyticsVisual.displayName = 'AnalyticsVisual';
 
-  useEffect(() => {
-    if (isHovered) {
-      let s = 0; let f = 0;
-      const interval = setInterval(() => {
-        if (s < 78) s += 2;
-        if (f < 1256) f += 34;
-        if (s > 78) s = 78;
-        if (f > 1256) f = 1256;
-        setStorage(s);
-        setFiles(f);
-        if (s === 78 && f === 1256) clearInterval(interval);
-      }, 40);
-      return () => clearInterval(interval);
-    } else {
-      setStorage(78);
-      setFiles(1256);
-    }
-  }, [isHovered]);
-
+const CloudVisual = memo(({ isHovered, isInView = true }) => {
   return (
-    <div className="relative w-full h-full bg-white/95 backdrop-blur-3xl rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-3 gap-2 z-10">
+    <div className="relative w-full h-full bg-white/95 rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-3 gap-2 z-10">
        
        {/* Background */}
        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-50" />
@@ -1348,11 +1258,11 @@ const CloudVisual = ({ isHovered }) => {
           {/* Security Badges */}
           <div className="flex flex-col gap-1.5">
              <div className="flex items-center gap-1.5 bg-white border border-blue-100 rounded-lg px-2 py-1 shadow-sm">
-                <ShieldCheck className="w-3 h-3 text-blue-500" />
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
                 <span className="text-[6px] font-black text-blue-700 uppercase tracking-widest">AES-256 Encrypted</span>
              </div>
              <div className="flex items-center gap-1.5 bg-white border border-green-100 rounded-lg px-2 py-1 shadow-sm">
-                <ShieldCheck className="w-3 h-3 text-green-500" />
+                <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
                 <span className="text-[6px] font-black text-green-700 uppercase tracking-widest">Cloud Backup</span>
              </div>
           </div>
@@ -1402,11 +1312,11 @@ const CloudVisual = ({ isHovered }) => {
           <div className="flex justify-between items-end bg-gradient-to-br from-blue-50 to-blue-50/30 rounded-xl p-2 border border-blue-100 shadow-sm">
              <div className="flex flex-col">
                 <span className="text-[6px] font-black text-blue-500 uppercase tracking-widest mb-0.5">Storage</span>
-                <span className="text-[18px] font-black text-blue-800 leading-none">{storage}%</span>
+                <span className="text-[18px] font-black text-blue-800 leading-none">78%</span>
              </div>
              <div className="flex flex-col items-end">
                 <span className="text-[6px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Files</span>
-                <span className="text-[12px] font-black text-gray-800 leading-none">{files}</span>
+                <span className="text-[12px] font-black text-gray-800 leading-none">1256</span>
              </div>
           </div>
 
@@ -1419,7 +1329,7 @@ const CloudVisual = ({ isHovered }) => {
              </svg>
 
              {/* Data particles */}
-             {isHovered && (
+             {isHovered && isInView && (
                 <>
                    <motion.div animate={{ left: ["-20%", "50%"], top: ["50%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_blue] -translate-x-1/2 -translate-y-1/2" />
                    <motion.div animate={{ left: ["-20%", "50%"], top: ["50%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.7 }} className="absolute w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_green] -translate-x-1/2 -translate-y-1/2" />
@@ -1428,15 +1338,15 @@ const CloudVisual = ({ isHovered }) => {
 
              {/* Main Cloud */}
              <motion.div 
-               animate={isHovered ? { scale: [1, 1.05, 1], filter: ["drop-shadow(0 0 0px rgba(47,128,237,0))", "drop-shadow(0 0 15px rgba(47,128,237,0.4))", "drop-shadow(0 0 0px rgba(47,128,237,0))"] } : {}}
+               animate={isHovered && isInView ? { scale: [1, 1.05, 1], filter: ["drop-shadow(0 0 0px rgba(47,128,237,0))", "drop-shadow(0 0 15px rgba(47,128,237,0.4))", "drop-shadow(0 0 0px rgba(47,128,237,0))"] } : {}}
                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                className="relative z-10 w-16 h-16 bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col items-center justify-center gap-1"
              >
                 <div className="relative">
                    <Cloud className="w-6 h-6 text-primary" />
-                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute -bottom-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                   {isHovered && isInView && <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute -bottom-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
                       <Activity className="w-2 h-2 text-accent" />
-                   </motion.div>
+                   </motion.div>}
                 </div>
                 <span className="text-[6px] font-black text-gray-600 uppercase tracking-widest mt-0.5">Synced</span>
              </motion.div>
@@ -1445,7 +1355,7 @@ const CloudVisual = ({ isHovered }) => {
           {/* Bottom Feed: Recent Evidence */}
           <div className="h-14 bg-gray-50/80 rounded-xl border border-gray-100 p-1.5 flex flex-col overflow-hidden relative shadow-sm">
              <motion.div 
-               animate={isHovered ? { y: [0, -45] } : { y: 0 }} 
+               animate={isHovered && isInView ? { y: [0, -45] } : { y: 0 }} 
                transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
                className="flex flex-col gap-1"
              >
@@ -1485,27 +1395,13 @@ const CloudVisual = ({ isHovered }) => {
        </div>
     </div>
   );
-};
+});
 
-const CitizenVisual = ({ isHovered }) => {
-  const [progress, setProgress] = useState(0);
+CloudVisual.displayName = 'CloudVisual';
 
-  useEffect(() => {
-    if (isHovered) {
-      let current = 0;
-      const interval = setInterval(() => {
-        if (current < 80) current += 1;
-        setProgress(current);
-        if (current >= 80) clearInterval(interval);
-      }, 30);
-      return () => clearInterval(interval);
-    } else {
-      setProgress(80);
-    }
-  }, [isHovered]);
-
+const CitizenVisual = memo(({ isHovered, isInView = true }) => {
   return (
-    <div className="relative w-full h-full bg-gray-50/90 backdrop-blur-3xl rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex p-3 gap-3 overflow-hidden pointer-events-none group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 z-10">
+    <div className="relative w-full h-full bg-gray-50/95 rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex p-3 gap-3 overflow-hidden pointer-events-none group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 z-10">
       
       {/* Background Texture */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent opacity-50" />
@@ -1573,7 +1469,7 @@ const CitizenVisual = ({ isHovered }) => {
                         {step.icon ? step.icon : (step.active && !step.pulsing ? (
                            <svg className="w-2 h-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                         ) : <div className={`w-1.5 h-1.5 rounded-full ${step.bg}`} />)}
-                        {step.pulsing && isHovered && <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-orange-500 rounded-full" />}
+                        {step.pulsing && isHovered && isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-orange-500 rounded-full" />}
                      </div>
                      <div className="flex flex-col ml-1">
                         <span className={`text-[7px] font-black ${step.active ? (step.pulsing ? 'text-orange-600' : 'text-gray-800') : 'text-gray-400'}`}>{step.title}</span>
@@ -1608,10 +1504,10 @@ const CitizenVisual = ({ isHovered }) => {
                   <div className="w-1 h-1 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-[5px] font-black text-green-400 uppercase tracking-widest">Live Status</span>
                </div>
-               <span className="text-[8px] font-black text-white">{progress}%</span>
+               <span className="text-[8px] font-black text-white">80%</span>
             </div>
             <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-               <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: `${progress}%` } : { width: "80%" }} transition={{ duration: 2, ease: "easeOut" }} className="h-full bg-gradient-to-r from-green-500 to-green-400" />
+               <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: "80%" } : { width: "80%" }} transition={{ duration: 2, ease: "easeOut" }} className="h-full bg-gradient-to-r from-green-500 to-green-400" />
             </div>
          </div>
 
@@ -1622,7 +1518,7 @@ const CitizenVisual = ({ isHovered }) => {
             <div className="flex-1 relative overflow-hidden">
                <motion.div 
                  initial={{ y: 0 }} 
-                 animate={isHovered ? { y: -70 } : { y: 0 }} 
+                 animate={isHovered && isInView ? { y: -70 } : { y: 0 }} 
                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                  className="flex flex-col gap-1.5 absolute w-full"
                >
@@ -1654,62 +1550,34 @@ const CitizenVisual = ({ isHovered }) => {
 
     </div>
   );
-};
+});
+
+CitizenVisual.displayName = 'CitizenVisual';
 
 
 // ==========================================
 // CORE FEATURE CARD COMPONENT
 // ==========================================
-const FeatureCard = ({ feature }) => {
+const FeatureCard = memo(({ feature, index }) => {
   const ref = useRef(null);
+  const isInView = useInView(ref, { margin: "100px 0px 100px 0px" });
   const [isHovered, setIsHovered] = useState(false);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // Parallax effect springs (max 5 degrees)
-  const mouseXSpring = useSpring(x, { stiffness: 150, damping: 20 });
-  const mouseYSpring = useSpring(y, { stiffness: 150, damping: 20 });
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["5deg", "-5deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-5deg", "5deg"]);
-
-  const handleMouseMove = (e) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    x.set((mouseX / width) - 0.5);
-    y.set((mouseY / height) - 0.5);
-  };
-
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    x.set(0);
-    y.set(0);
-  };
-
-  const handleMouseEnter = () => {
-    setIsHovered(true);
-  };
 
   return (
     <motion.div
       ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onMouseEnter={handleMouseEnter}
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      variants={{
-        hidden: { opacity: 0, y: 60, scale: 0.95, filter: 'blur(8px)' },
-        show: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
-      }}
-      className={`group relative rounded-[28px] overflow-hidden ${feature.colSpan} transition-all duration-300 hover:-translate-y-[10px] hover:scale-[1.03] hover:z-20 cursor-pointer shadow-sm hover:shadow-2xl`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.6, delay: (index % 2) * 0.15, ease: [0.16, 1, 0.3, 1] }}
+      className={`group relative rounded-[28px] overflow-hidden ${feature.colSpan} transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl cursor-pointer transform-gpu`}
     >
-      <div className={`absolute inset-0 backdrop-blur-xl border transition-all duration-300 rounded-[28px] ${feature.darkTheme ? 'bg-[#0A101C] border-white/10 group-hover:border-white/20' : 'bg-[rgba(255,255,255,0.75)] border-white group-hover:border-primary/40'}`} />
+      <div className={`absolute inset-0 border transition-all duration-300 rounded-[28px] ${feature.darkTheme ? 'bg-[#0A101C]/95 border-white/10 group-hover:border-white/20' : 'bg-white/85 backdrop-blur-sm border-white group-hover:border-primary/40'}`} />
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-primary/5 to-transparent rounded-[28px] transition-opacity duration-300 pointer-events-none" />
 
-      <div className="relative w-full h-full flex flex-col lg:flex-row p-8 z-10 pointer-events-none gap-8" style={{ transform: "translateZ(40px)" }}>
+      <div className="relative w-full h-full flex flex-col lg:flex-row p-8 z-10 pointer-events-none gap-8">
         
         {/* Left Side: 40% Text Content */}
         <div className="w-full lg:w-[40%] flex flex-col justify-between relative z-20">
@@ -1719,7 +1587,7 @@ const FeatureCard = ({ feature }) => {
                   <feature.icon className={`w-7 h-7 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110 ${feature.darkTheme ? 'text-white' : 'text-primary'}`} strokeWidth={1.5} />
                 </div>
                 {feature.badge && (
-                  <div className={`px-3 py-1.5 rounded-full backdrop-blur-md border text-[10px] font-bold shadow-sm tracking-widest uppercase ${feature.darkTheme ? 'bg-white/10 border-white/20 text-white' : 'bg-white/90 border-primary/20 text-primary'}`}>
+                  <div className={`px-3 py-1.5 rounded-full border text-[10px] font-bold shadow-sm tracking-widest uppercase ${feature.darkTheme ? 'bg-white/10 border-white/20 text-white' : 'bg-white/95 border-primary/20 text-primary'}`}>
                     {feature.badge}
                   </div>
                 )}
@@ -1738,12 +1606,14 @@ const FeatureCard = ({ feature }) => {
         
         {/* Right Side: 60% Visual Container */}
         <div className="w-full lg:w-[60%] h-full relative flex items-center justify-center">
-           {feature.visual && <feature.visual isHovered={isHovered} />}
+           {feature.visual && <feature.visual isHovered={isHovered} isInView={isInView} />}
         </div>
       </div>
     </motion.div>
   );
-};
+});
+
+FeatureCard.displayName = 'FeatureCard';
 
 // ==========================================
 // FEATURE DATA (10 CARDS)
@@ -1764,27 +1634,34 @@ const features = [
 // ==========================================
 // MAIN SECTION
 // ==========================================
-const Features = () => {
+const Features = memo(() => {
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { margin: "100px 0px 100px 0px" });
+
   return (
-    <section id="features" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
+    <section ref={sectionRef} id="features" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
       {/* Premium Background ambient visuals */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
-      <div className="absolute top-[10%] left-[-10%] w-[1000px] h-[1000px] bg-[radial-gradient(circle,_rgba(47,128,237,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[5%] right-[-10%] w-[1200px] h-[1200px] bg-[radial-gradient(circle,_rgba(111,200,255,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none" />
+      <div className="absolute top-[10%] left-[-10%] w-[1000px] h-[1000px] bg-[radial-gradient(circle,_rgba(47,128,237,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none transform-gpu" />
+      <div className="absolute bottom-[5%] right-[-10%] w-[1200px] h-[1200px] bg-[radial-gradient(circle,_rgba(111,200,255,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none transform-gpu" />
       
       {/* Floating particles */}
-      <motion.div animate={{ y: [0, -80, 0], opacity: [0.2, 0.6, 0.2] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[15%] left-[15%] w-3 h-3 bg-primary/40 rounded-full blur-[2px]" />
-      <motion.div animate={{ y: [0, 80, 0], x: [0, 40, 0], opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[70%] right-[20%] w-4 h-4 bg-accent/40 rounded-full blur-[3px]" />
+      {isInView && (
+        <>
+          <motion.div animate={{ y: [0, -80, 0], opacity: [0.2, 0.6, 0.2] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[15%] left-[15%] w-3 h-3 bg-primary/40 rounded-full blur-[2px] transform-gpu" />
+          <motion.div animate={{ y: [0, 80, 0], x: [0, 40, 0], opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[70%] right-[20%] w-4 h-4 bg-accent/40 rounded-full blur-[3px] transform-gpu" />
+        </>
+      )}
 
       <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
         
         {/* Section Header */}
         <motion.div 
-          initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
-          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 1 }}
-          className="text-center w-full mx-auto mb-28"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center w-full mx-auto mb-28 transform-gpu"
         >
           <h2 className="text-[56px] lg:text-[76px] font-extrabold text-text-primary mb-8 tracking-tight leading-[1.1]">
             <span className="inline-block">Powerful</span>{' '}
@@ -1792,15 +1669,9 @@ const Features = () => {
               Features
             </span>
           </h2>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-[20px] text-text-secondary leading-relaxed max-w-3xl mx-auto"
-          >
+          <p className="text-[20px] text-text-secondary leading-relaxed max-w-3xl mx-auto">
             Discover how AWARE combines IoT, AI, GIS, and Cloud technologies to detect, analyze, and report air pollution in real time.
-          </motion.p>
+          </p>
         </motion.div>
 
         {/* 12-Column Asymmetrical Bento Grid */}
@@ -1813,7 +1684,6 @@ const Features = () => {
           whileInView="show"
           viewport={{ once: true, margin: "-100px" }}
           className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-7 auto-rows-[420px]"
-          style={{ perspective: "1200px" }}
         >
           {features.map((feat, idx) => (
             <FeatureCard key={idx} feature={feat} />
@@ -1822,6 +1692,8 @@ const Features = () => {
       </div>
     </section>
   );
-};
+});
+
+Features.displayName = 'Features';
 
 export default Features;

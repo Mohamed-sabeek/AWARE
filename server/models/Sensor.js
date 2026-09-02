@@ -16,11 +16,20 @@ const sensorSchema = new mongoose.Schema({
   },
   location: {
     type: String,
-    required: true
+    required: true,
+    default: 'ESP32 Station'
+  },
+  voltage: {
+    type: Number,
+    default: 0
+  },
+  threshold: {
+    type: Number,
+    default: 0.400
   },
   aqi: {
     type: Number,
-    required: true,
+    required: false,
     default: 0
   },
   pm25: {

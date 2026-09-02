@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { memo, useRef, useState } from 'react';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { Cpu, Radio, ScanEye, Network, Satellite, Database, Zap, Bot, Cloud, Lock, Wifi } from 'lucide-react';
 
 const techGroups = [
@@ -61,8 +61,10 @@ const statusBadges = [
   { text: 'IoT Enabled', icon: Wifi },
 ];
 
-const TechnologyStack = () => {
+const TechnologyStack = memo(() => {
   const [hoveredTech, setHoveredTech] = useState(null);
+  const sectionRef = useRef(null);
+  const isInView = useInView(sectionRef, { margin: "100px 0px 100px 0px" });
 
   // Animation variants
   const containerVariants = {
@@ -70,7 +72,7 @@ const TechnologyStack = () => {
     visible: { 
       opacity: 1, 
       transition: { 
-        staggerChildren: 0.1,
+        staggerChildren: 0.08,
       }
     }
   };
@@ -86,20 +88,24 @@ const TechnologyStack = () => {
   };
 
   return (
-    <section id="technology" className="py-32 relative bg-[var(--color-bg-light)] overflow-hidden">
+    <section ref={sectionRef} id="technology" className="py-32 relative bg-[var(--color-bg-light)] overflow-hidden">
       
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none">
-        <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
-          transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/4 left-1/4 w-[35rem] h-[35rem] bg-blue-400/20 rounded-full blur-[100px]"
-        />
-        <motion.div 
-          animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.12, 0.08] }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-indigo-400/15 rounded-full blur-[120px]"
-        />
+        {isInView && (
+          <>
+            <motion.div 
+              animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
+              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-1/4 left-1/4 w-[35rem] h-[35rem] bg-blue-400/20 rounded-full blur-[100px] transform-gpu"
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.12, 0.08] }}
+              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+              className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-indigo-400/15 rounded-full blur-[120px] transform-gpu"
+            />
+          </>
+        )}
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
       </div>
 
@@ -136,7 +142,7 @@ const TechnologyStack = () => {
             <motion.div
               key={gIdx}
               variants={cardVariants}
-              className="bg-white/60 backdrop-blur-3xl border border-white/80 rounded-[32px] p-8 md:p-10 shadow-[0_8px_32px_rgba(47,128,237,0.04)] hover:shadow-[0_16px_48px_rgba(47,128,237,0.12)] hover:-translate-y-2 transition-all duration-500 flex flex-col relative group"
+              className="bg-white/85 border border-white/80 rounded-[32px] p-8 md:p-10 shadow-[0_8px_32px_rgba(47,128,237,0.04)] hover:shadow-[0_16px_48px_rgba(47,128,237,0.12)] hover:-translate-y-2 transition-all duration-500 flex flex-col relative group"
             >
               {/* Card Hover Glow */}
               <div className="absolute inset-0 rounded-[32px] bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -156,13 +162,13 @@ const TechnologyStack = () => {
                     {/* Logo Container */}
                     <motion.div 
                       whileHover={{ y: -6, scale: 1.1 }}
-                      animate={{ rotate: hoveredTech === item.id ? 0 : [0, 2, -2, 0] }}
+                      animate={isInView ? { rotate: hoveredTech === item.id ? 0 : [0, 2, -2, 0] } : { rotate: 0 }}
                       transition={{ 
                         rotate: { duration: 4, repeat: Infinity, ease: 'easeInOut' },
                         scale: { type: 'spring', stiffness: 400, damping: 25 },
                         y: { type: 'spring', stiffness: 400, damping: 25 }
                       }}
-                      className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center relative z-10"
+                      className="w-16 h-16 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center relative z-10 transform-gpu"
                     >
                       {/* Logo Glow effect on hover */}
                       <div className={`absolute inset-0 blur-md rounded-2xl opacity-0 transition-opacity duration-500 ${hoveredTech === item.id ? 'opacity-30' : ''}`} style={{ backgroundColor: item.isLucide ? item.color : '#3b82f6' }}></div>
@@ -180,6 +186,10 @@ const TechnologyStack = () => {
                         <img 
                           src={item.src} 
                           alt={item.name} 
+                          loading="lazy"
+                          decoding="async"
+                          width="32"
+                          height="32"
                           className="w-8 h-8 object-contain relative z-10 transition-all duration-300"
                           style={{
                             filter: hoveredTech === item.id ? 'brightness(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none'
@@ -201,7 +211,7 @@ const TechnologyStack = () => {
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 5, scale: 0.95 }}
                           transition={{ duration: 0.2 }}
-                          className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 bg-gray-900/95 backdrop-blur-md text-white text-xs font-semibold rounded-lg shadow-xl pointer-events-none z-50 flex flex-col items-center min-w-max"
+                          className="absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 bg-gray-900/95 text-white text-xs font-semibold rounded-lg shadow-xl pointer-events-none z-50 flex flex-col items-center min-w-max"
                         >
                           {item.tooltip}
                           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900/95 rotate-45 border-r border-b border-gray-700/50"></div>
@@ -226,8 +236,7 @@ const TechnologyStack = () => {
           {statusBadges.map((badge, i) => (
             <div 
               key={i} 
-              className="flex items-center gap-2.5 px-5 py-2.5 bg-white/60 backdrop-blur-xl rounded-full border border-primary/10 shadow-[0_2px_10px_rgba(47,128,237,0.05)] text-[13px] font-bold text-text-primary animate-pulse-slow hover:border-primary/30 transition-colors cursor-default"
-              style={{ animationDelay: `${i * 0.2}s` }}
+              className="flex items-center gap-2.5 px-5 py-2.5 bg-white/85 rounded-full border border-primary/10 shadow-[0_2px_10px_rgba(47,128,237,0.05)] text-[13px] font-bold text-text-primary hover:border-primary/30 transition-colors cursor-default"
             >
               <badge.icon className="w-4 h-4 text-primary" strokeWidth={2.5} />
               {badge.text}
@@ -238,6 +247,8 @@ const TechnologyStack = () => {
       </div>
     </section>
   );
-};
+});
+
+TechnologyStack.displayName = 'TechnologyStack';
 
 export default TechnologyStack;
