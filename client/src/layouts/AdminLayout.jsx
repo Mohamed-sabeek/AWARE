@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Camera, 
   List, 
-  Cpu,
   Settings,
   Menu,
   LogOut,
@@ -26,7 +25,6 @@ const navItems = [
   { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts / Events' },
   { path: '/admin/evidence', icon: Camera, label: 'Evidence' },
   { path: '/admin/logs', icon: List, label: 'Activity Logs' },
-  { path: '/admin/devices', icon: Cpu, label: 'Devices' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
