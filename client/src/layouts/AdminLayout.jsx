@@ -9,14 +9,12 @@ import {
   Radio, 
   AlertTriangle,
   Camera, 
-  List, 
-  Settings,
-  Menu,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  Bell
+  Menu, 
+  LogOut, 
+  ChevronLeft, 
+  ChevronRight, 
+  Search, 
+  Bell 
 } from 'lucide-react';
 
 const navItems = [
@@ -24,8 +22,6 @@ const navItems = [
   { path: '/admin/monitoring', icon: Radio, label: 'Live Monitoring' },
   { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts / Events' },
   { path: '/admin/evidence', icon: Camera, label: 'Evidence' },
-  { path: '/admin/logs', icon: List, label: 'Activity Logs' },
-  { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
 const AdminLayout = () => {
