@@ -14,7 +14,7 @@ const floatingCards = [
 
 const Hero = memo(() => {
   const sectionRef = useRef(null);
-  const isInView = useInView(sectionRef, { margin: '100px 0px 100px 0px' });
+  const isInView = useInView(sectionRef, { margin: '50px 0px 50px 0px' });
   const shouldReduceMotion = useReducedMotion();
 
   return (
@@ -33,9 +33,9 @@ const Hero = memo(() => {
         />
       </div>
 
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px] z-0 pointer-events-none transform-gpu" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-accent/10 rounded-full blur-[120px] z-0 pointer-events-none transform-gpu" />
+      {/* Background ambient lighting (Static lightweight radial gradients) */}
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[radial-gradient(circle,_rgba(47,128,237,0.06)_0%,_transparent_70%)] rounded-full z-0 pointer-events-none transform-gpu" />
+      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[radial-gradient(circle,_rgba(111,200,255,0.08)_0%,_transparent_70%)] rounded-full z-0 pointer-events-none transform-gpu" />
 
       <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-8">

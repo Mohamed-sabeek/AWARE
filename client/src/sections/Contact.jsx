@@ -5,7 +5,7 @@ import { Mail, Phone, MapPin, Send } from 'lucide-react';
 const Contact = memo(() => {
   return (
     <section id="contact" className="py-24 bg-[var(--color-bg-light)] relative overflow-hidden">
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none transform-gpu" />
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[radial-gradient(circle,_rgba(47,128,237,0.06)_0%,_transparent_70%)] rounded-full pointer-events-none transform-gpu" />
 
       <div className="container mx-auto px-6 md:px-12 max-w-[1400px] relative z-10">
         <div className="flex flex-col lg:flex-row gap-16">

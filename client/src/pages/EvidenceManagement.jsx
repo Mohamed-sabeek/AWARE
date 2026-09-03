@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import PageHeader from '../components/PageHeader';
@@ -18,52 +18,51 @@ const EvidenceManagement = () => {
   const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const fetchEvidence = async () => {
+  const fetchEvidence = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/evidence');
-      setEvidenceData(response.data);
+      setEvidenceData(response.data || []);
     } catch (error) {
       console.error('Error fetching evidence:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEvidence();
-  }, []);
+  }, [fetchEvidence]);
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     try {
       await api.delete(`/evidence/${id}`);
       setEvidenceData(prev => prev.filter(e => e._id !== id));
-      if (selectedEvidence && selectedEvidence._id === id) {
-        setIsDrawerOpen(false);
-      }
+      setSelectedEvidence(prev => (prev?._id === id ? null : prev));
     } catch (error) {
       console.error('Error deleting evidence:', error);
     }
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchEvidence();
-  };
+  }, [fetchEvidence]);
 
-  const openDrawer = (evidence) => {
+  const openDrawer = useCallback((evidence) => {
     setSelectedEvidence(evidence);
     setIsDrawerOpen(true);
-  };
+  }, []);
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     setIsDrawerOpen(false);
-    setTimeout(() => setSelectedEvidence(null), 300);
-  };
+  }, []);
 
-  // Filter Logic
+  // Safe Filter Logic
+  const query = searchQuery.trim().toLowerCase();
   const filteredEvidence = evidenceData.filter(item => {
-    const matchesSearch = item.evidenceId.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const idMatch = (item.evidenceId || '').toLowerCase().includes(query);
+    const locMatch = (item.locationName || item.location || '').toLowerCase().includes(query);
+    const matchesSearch = !query || idMatch || locMatch;
     const matchesType = filterType === 'All' || item.detectionType === filterType;
     const matchesStatus = filterStatus === 'All' || item.status === filterStatus;
     
@@ -71,7 +70,7 @@ const EvidenceManagement = () => {
   });
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col min-h-full w-full">
       <PageHeader 
         title="Evidence Management"
         description="Manage AI captured evidence, verify incidents and generate reports."

@@ -142,19 +142,55 @@ export const updateSensor = async (req, res) => {
 };
 
 // @desc    Delete a sensor
+// @desc    Delete a sensor node registration
 // @route   DELETE /api/sensors/:id
 // @access  Private/Admin
 export const deleteSensor = async (req, res) => {
   try {
-    const sensor = await Sensor.findById(req.params.id);
+    const targetId = (req.params.id || '').trim();
+    let sensor = null;
+
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      sensor = await Sensor.findById(targetId);
+    }
+    if (!sensor) {
+      sensor = await Sensor.findOne({ sensorId: targetId });
+    }
+
     if (sensor) {
+      const removedId = sensor.sensorId;
+      const removedLoc = sensor.locationName || sensor.location;
+      
+      // Delete ONLY the Sensor registration document
       await Sensor.deleteOne({ _id: sensor._id });
-      res.json({ message: 'Sensor removed' });
+
+      // Log activity
+      await ActivityLog.create({
+        deviceName: removedLoc || removedId,
+        deviceId: removedId,
+        category: 'Hardware',
+        severity: 'Warning',
+        description: `Sensor node registration permanently removed: ${removedId}`,
+        location: removedLoc || 'ESP32 Station'
+      });
+
+      return res.status(200).json({ 
+        success: true, 
+        message: `Sensor node '${removedId}' deleted successfully.` 
+      });
     } else {
-      res.status(404).json({ message: 'Sensor not found' });
+      return res.status(404).json({ 
+        success: false, 
+        message: `Sensor '${targetId}' not found.` 
+      });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    console.error('Error in deleteSensor:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Server Error while deleting sensor node', 
+      error: error.message 
+    });
   }
 };
 
@@ -401,6 +437,101 @@ export const getSensorReadings = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Server Error while fetching sensor readings',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Assign or update the fixed physical location of a sensor
+// @route   PUT /api/sensors/:id/location or PUT /api/sensors/location
+// @access  Private/Admin
+export const updateSensorLocation = async (req, res) => {
+  try {
+    const targetId = req.params.id || req.body.deviceId || req.body.sensorId;
+    const { deviceId, sensorId, locationName, location, latitude, longitude } = req.body;
+
+    const identifier = (targetId || deviceId || sensorId || '').trim();
+
+    if (!identifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Device/Sensor ID is required'
+      });
+    }
+
+    const locName = (locationName || location || '').trim();
+    if (!locName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location name is required'
+      });
+    }
+
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid latitude is required (must be between -90 and 90)'
+      });
+    }
+
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid longitude is required (must be between -180 and 180)'
+      });
+    }
+
+    // Find existing sensor by sensorId or by _id
+    let sensor = await Sensor.findOne({ sensorId: identifier });
+    if (!sensor && mongoose.Types.ObjectId.isValid(identifier)) {
+      sensor = await Sensor.findById(identifier);
+    }
+
+    if (!sensor) {
+      sensor = new Sensor({
+        sensorId: identifier,
+        location: locName,
+        locationName: locName,
+        latitude: lat,
+        longitude: lng,
+        voltage: 0,
+        threshold: 0.400,
+        status: 'Online',
+        lastUpdated: Date.now()
+      });
+    } else {
+      sensor.location = locName;
+      sensor.locationName = locName;
+      sensor.latitude = lat;
+      sensor.longitude = lng;
+      sensor.lastUpdated = Date.now();
+    }
+
+    const savedSensor = await sensor.save();
+
+    await ActivityLog.create({
+      deviceName: savedSensor.locationName || savedSensor.location || savedSensor.sensorId,
+      deviceId: savedSensor.sensorId,
+      category: 'Hardware',
+      severity: 'Success',
+      description: `📍 Fixed location updated: ${savedSensor.locationName} (${lat.toFixed(6)}, ${lng.toFixed(6)})`,
+      location: savedSensor.locationName || savedSensor.location
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Location saved successfully for ${savedSensor.sensorId}`,
+      data: savedSensor
+    });
+
+  } catch (error) {
+    console.error('Error in updateSensorLocation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while updating sensor location',
       error: error.message
     });
   }

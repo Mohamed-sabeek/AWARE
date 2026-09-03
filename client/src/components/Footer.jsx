@@ -58,7 +58,7 @@ const SocialButton = memo(({ Icon, href }) => (
     href={href}
     variants={itemVariants}
     whileHover={{ y: -4, scale: 1.05 }}
-    className="w-11 h-11 rounded-full bg-white/60 backdrop-blur-md border border-primary/10 flex items-center justify-center text-text-secondary transition-all duration-300 hover:bg-gradient-to-br hover:from-primary hover:to-blue-600 hover:text-white hover:border-transparent hover:shadow-[0_8px_20px_rgba(47,128,237,0.3)] group"
+    className="w-11 h-11 rounded-full bg-white/85 border border-primary/10 flex items-center justify-center text-text-secondary transition-all duration-300 hover:bg-gradient-to-br hover:from-primary hover:to-blue-600 hover:text-white hover:border-transparent hover:shadow-[0_8px_20px_rgba(47,128,237,0.3)] group shadow-sm"
   >
     <Icon className="w-[18px] h-[18px] transition-colors" strokeWidth={2} />
   </motion.a>
@@ -85,32 +85,17 @@ const FooterLink = memo(({ text, href }) => (
 FooterLink.displayName = 'FooterLink';
 
 const Footer = memo(() => {
-  const footerRef = useRef(null);
-  const isInView = useInView(footerRef, { margin: "100px 0px 100px 0px" });
-
   return (
-    <footer ref={footerRef} className="relative bg-[var(--color-bg-light)] pt-24 pb-8 overflow-hidden">
+    <footer className="relative bg-[var(--color-bg-light)] pt-24 pb-8 overflow-hidden">
       
       {/* Subtle Top Divider */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
-      {/* Background Ambience */}
+      {/* Background Ambience (Static radial gradients, no mix-blend) */}
       <div className="absolute inset-0 pointer-events-none">
-        {isInView && (
-          <>
-            <motion.div 
-              animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
-              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-0 left-1/4 w-[40rem] h-[40rem] bg-blue-400/20 rounded-full blur-[120px] transform-gpu"
-            />
-            <motion.div 
-              animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.12, 0.08] }}
-              transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-              className="absolute bottom-1/4 right-1/4 w-[35rem] h-[35rem] bg-indigo-400/15 rounded-full blur-[100px] transform-gpu"
-            />
-          </>
-        )}
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.1] mix-blend-soft-light"></div>
+        <div className="absolute top-0 left-1/4 w-[40rem] h-[40rem] bg-[radial-gradient(circle,_rgba(96,165,250,0.12)_0%,_transparent_70%)] rounded-full transform-gpu" />
+        <div className="absolute bottom-1/4 right-1/4 w-[35rem] h-[35rem] bg-[radial-gradient(circle,_rgba(129,140,248,0.1)_0%,_transparent_70%)] rounded-full transform-gpu" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05]"></div>
       </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 max-w-[1400px]">

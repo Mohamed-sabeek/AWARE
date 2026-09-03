@@ -137,7 +137,7 @@ SocialIcon.displayName = 'SocialIcon';
 
 const Team = memo(() => {
   const sectionRef = useRef(null);
-  const isInView = useInView(sectionRef, { margin: "100px 0px 100px 0px" });
+  const isInView = useInView(sectionRef, { margin: "50px 0px 50px 0px" });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -162,23 +162,11 @@ const Team = memo(() => {
   return (
     <section ref={sectionRef} id="team" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
       
-      {/* Background Ambience */}
+      {/* Background Ambience (Static lightweight radial gradients, no mix-blend) */}
       <div className="absolute inset-0 pointer-events-none">
-        {isInView && (
-          <>
-            <motion.div 
-              animate={{ scale: [1, 1.1, 1], opacity: [0.15, 0.25, 0.15] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-0 left-1/4 w-[35rem] h-[35rem] bg-blue-400/20 rounded-full blur-[100px] transform-gpu"
-            />
-            <motion.div 
-              animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
-              transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute bottom-1/4 right-1/4 w-[45rem] h-[45rem] bg-indigo-400/15 rounded-full blur-[120px] transform-gpu"
-            />
-          </>
-        )}
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
+        <div className="absolute top-0 left-1/4 w-[35rem] h-[35rem] bg-[radial-gradient(circle,_rgba(96,165,250,0.15)_0%,_transparent_70%)] rounded-full transform-gpu" />
+        <div className="absolute bottom-1/4 right-1/4 w-[45rem] h-[45rem] bg-[radial-gradient(circle,_rgba(129,140,248,0.12)_0%,_transparent_70%)] rounded-full transform-gpu" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05]"></div>
       </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 max-w-[1400px]">

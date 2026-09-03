@@ -110,7 +110,7 @@ const ActivityLogs = () => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col min-h-full w-full">
       <PageHeader 
         title="Activity Logs"
         description="Track every action performed by the AWARE environmental monitoring platform in chronological order."
@@ -235,9 +235,36 @@ const ActivityLogs = () => {
             <div className="absolute inset-0 bg-gradient-to-br from-[#F8FBFF] to-white opacity-50 z-0" />
             <div className="relative z-10 max-w-5xl mx-auto">
               
-              <div className="flex justify-between items-center mb-10">
-                <h2 className="text-[20px] font-bold text-[#0F172A]">Activity Timeline</h2>
-                <div className="text-[13px] font-semibold text-[#64748B]">Showing {logs.length} of {totalLogs}</div>
+              <div className="flex flex-wrap justify-between items-center gap-4 mb-10 pb-4 border-b border-[#E2F0FF]">
+                <div>
+                  <h2 className="text-[20px] font-bold text-[#0F172A]">Activity Timeline</h2>
+                  <div className="text-[13px] font-semibold text-[#64748B] mt-0.5">Showing {logs.length} of {totalLogs} events</div>
+                </div>
+
+                {/* Top Pagination Controls */}
+                {logs.length > 0 && pages > 1 && (
+                  <div className="flex items-center gap-2.5">
+                    <button 
+                      type="button"
+                      disabled={page === 1}
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      className="px-4 py-2 bg-white border border-[#DCEEFF] rounded-xl text-[13px] font-bold text-[#64748B] hover:bg-[#F8FBFF] hover:text-[#3B82F6] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-[13px] font-bold text-slate-600 px-2">
+                      Page {page} of {pages}
+                    </span>
+                    <button 
+                      type="button"
+                      disabled={page === pages}
+                      onClick={() => setPage(p => Math.min(pages, p + 1))}
+                      className="px-4 py-2 bg-white border border-[#DCEEFF] rounded-xl text-[13px] font-bold text-[#64748B] hover:bg-[#F8FBFF] hover:text-[#3B82F6] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
 
               {logs.length === 0 ? (
@@ -300,29 +327,6 @@ const ActivityLogs = () => {
                       </motion.div>
                     );
                   })}
-                </div>
-              )}
-              
-              {/* Pagination */}
-              {logs.length > 0 && pages > 1 && (
-                <div className="mt-16 flex items-center justify-between border-t border-[#E2F0FF] pt-8">
-                  <button 
-                    disabled={page === 1}
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    className="px-5 py-2.5 bg-white border border-[#DCEEFF] rounded-xl text-[13px] font-bold text-[#64748B] hover:bg-[#F8FBFF] hover:text-[#3B82F6] transition-colors shadow-sm disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-500">Page {page} of {pages}</span>
-                  </div>
-                  <button 
-                    disabled={page === pages}
-                    onClick={() => setPage(p => Math.min(pages, p + 1))}
-                    className="px-5 py-2.5 bg-white border border-[#DCEEFF] rounded-xl text-[13px] font-bold text-[#64748B] hover:bg-[#F8FBFF] hover:text-[#3B82F6] transition-colors shadow-sm disabled:opacity-50"
-                  >
-                    Next
-                  </button>
                 </div>
               )}
 

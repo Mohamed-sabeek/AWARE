@@ -13,6 +13,7 @@ import ActivityLogs from './pages/ActivityLogs';
 import GISMap from './pages/GISMap';
 import SatelliteMonitoring from './pages/SatelliteMonitoring';
 import AdminAnalytics from './pages/AdminAnalytics';
+import SensorLocation from './pages/SensorLocation';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="monitoring" element={<LiveMonitoring />} />
+            <Route path="location" element={<SensorLocation />} />
             <Route path="alerts" element={<ActivityLogs />} />
             <Route path="evidence" element={<EvidenceManagement />} />
             <Route path="logs" element={<ActivityLogs />} />

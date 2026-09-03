@@ -4,6 +4,7 @@ import {
   getSensorById,
   createSensor,
   updateSensor,
+  updateSensorLocation,
   deleteSensor,
   recordSensorReading,
   getSensorReadings
@@ -17,6 +18,10 @@ router.post('/reading', recordSensorReading);
 
 // Historical readings for a specific sensor (e.g. GET /api/sensors/ESP32-CAM-001/readings?limit=50)
 router.get('/:sensorId/readings', getSensorReadings);
+
+// Dedicated sensor fixed location endpoints (Admin protected)
+router.put('/location', protect, admin, updateSensorLocation);
+router.put('/:id/location', protect, admin, updateSensorLocation);
 
 router.route('/')
   .get(protect, admin, getSensors)

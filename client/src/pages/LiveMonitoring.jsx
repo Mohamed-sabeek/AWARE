@@ -265,7 +265,7 @@ const LiveMonitoring = () => {
     : (latestEvidence?.metadata?.voltage !== undefined ? `${Number(latestEvidence.metadata.voltage).toFixed(3)} V` : `${currentVoltage.toFixed(3)} V`);
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col min-h-full w-full">
       <PageHeader 
         title="Live Monitoring"
         description="Real-time gas sensor surveillance, camera uplink status, and automated threshold alerts."
@@ -577,6 +577,24 @@ const LiveMonitoring = () => {
                     <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Evidence Time</span>
                     <span className="text-xs font-bold text-slate-800 truncate block">
                       {evidenceTimeFormatted}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/60 col-span-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Evidence Location</span>
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                      <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      {latestEvidence?.locationName || latestEvidence?.location ? (
+                        <span>
+                          {latestEvidence.locationName || latestEvidence.location}
+                          {latestEvidence.latitude !== null && latestEvidence.latitude !== undefined && latestEvidence.longitude !== null && latestEvidence.longitude !== undefined && (
+                            <span className="text-slate-500 font-mono text-[11px] ml-1.5 font-normal">
+                              ({Number(latestEvidence.latitude).toFixed(6)}, {Number(latestEvidence.longitude).toFixed(6)})
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-medium italic">Location not configured</span>
+                      )}
                     </span>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
-import React, { memo, useRef, useState, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, useSpring, useInView, useReducedMotion } from 'framer-motion';
+import React, { memo, useRef, useState } from 'react';
+import { motion, useInView } from 'framer-motion';
 import { Activity, Flame, Camera, Cloud, Bell, LayoutDashboard, FileText, Map, History, Users, ArrowRight, ShieldCheck, MapPin, Navigation } from 'lucide-react';
 
 // ==========================================
@@ -12,21 +12,19 @@ const AQIVisual = memo(({ isHovered, isInView = true }) => {
        <div className="relative w-full max-w-[160px] aspect-square flex items-center justify-center">
           
           {/* Subtle blue pulse expanding from center */}
-          <motion.div 
-            animate={isInView ? { scale: [1, 1.3, 1], opacity: [0, 0.2, 0] } : { opacity: 0 }} 
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} 
-            className="absolute inset-0 bg-primary rounded-full blur-xl transform-gpu" 
-          />
+          {isInView && (
+            <motion.div 
+              animate={{ scale: [1, 1.3, 1], opacity: [0, 0.2, 0] }} 
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} 
+              className="absolute inset-0 bg-primary rounded-full blur-xl transform-gpu" 
+            />
+          )}
 
           <svg viewBox="0 0 192 192" className="w-full h-full transform -rotate-90 drop-shadow-xl relative z-10 overflow-visible">
             <defs>
               <linearGradient id="aqiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#2F80ED">
-                   <animate attributeName="stop-color" values="#2F80ED; #6FC8FF; #2F80ED" dur="3s" repeatCount="indefinite" />
-                </stop>
-                <stop offset="100%" stopColor="#6FC8FF">
-                   <animate attributeName="stop-color" values="#6FC8FF; #2F80ED; #6FC8FF" dur="3s" repeatCount="indefinite" />
-                </stop>
+                <stop offset="0%" stopColor="#2F80ED" />
+                <stop offset="100%" stopColor="#6FC8FF" />
               </linearGradient>
             </defs>
             <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/80" />
@@ -83,7 +81,7 @@ const AQIVisual = memo(({ isHovered, isInView = true }) => {
                key={i} 
                initial={{ height: "10%" }}
                animate={isHovered && isInView ? { height: ["10%", `${h}%`, `${Math.max(10, h-10)}%`, `${h}%`] } : { height: `${h}%` }} 
-               transition={isHovered ? { duration: 2, delay: i * 0.08, repeat: Infinity, ease: "easeInOut" } : { duration: 0 }} 
+               transition={isHovered && isInView ? { duration: 2, delay: i * 0.08, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }} 
                className="flex-1 bg-gradient-to-t from-primary/20 to-primary rounded-t-sm" 
              />
           ))}
@@ -94,17 +92,13 @@ const AQIVisual = memo(({ isHovered, isInView = true }) => {
 
 AQIVisual.displayName = 'AQIVisual';
 
+// Optimized smoke particles (5 well-distributed particles instead of 10)
 const smokeOffsets = [
-  { x: 0, delay: 0 },
-  { x: 12, delay: 0.25 },
-  { x: -15, delay: 0.5 },
-  { x: 8, delay: 0.75 },
-  { x: -10, delay: 1.0 },
-  { x: 18, delay: 1.25 },
-  { x: -8, delay: 1.5 },
-  { x: 14, delay: 1.75 },
-  { x: -18, delay: 2.0 },
-  { x: 5, delay: 2.25 },
+  { x: 0, delay: 0, duration: 3.2 },
+  { x: 14, delay: 0.6, duration: 3.4 },
+  { x: -16, delay: 1.2, duration: 3.6 },
+  { x: 10, delay: 1.8, duration: 3.3 },
+  { x: -12, delay: 2.4, duration: 3.5 },
 ];
 
 const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
@@ -136,7 +130,7 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="w-full flex-1 border-b border-primary/20 flex gap-1.5 justify-center items-center pb-1">
                     {[...Array(3)].map((_, j) => (
-                      <div key={`b1-${i}-${j}`} className="w-2 h-3 bg-primary/60 rounded-[1px]" style={{ opacity: 0.2 + ((i + j) % 5) * 0.15, boxShadow: '0 0 6px rgba(47,128,237,0.4)' }}></div>
+                      <div key={`b1-${i}-${j}`} className="w-2 h-3 bg-primary/60 rounded-[1px]" style={{ opacity: 0.2 + ((i + j) % 5) * 0.15 }}></div>
                     ))}
                   </div>
                 ))}
@@ -159,7 +153,7 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
 
              <div className="w-full h-full mt-6 grid grid-cols-4 gap-1 p-2">
                 {[...Array(12)].map((_, i) => (
-                  <div key={`b2-${i}`} className="w-full h-3.5 bg-primary/50 rounded-[1px]" style={{ opacity: 0.3 + (i % 4) * 0.18, boxShadow: '0 0 4px rgba(47,128,237,0.3)' }}></div>
+                  <div key={`b2-${i}`} className="w-full h-3.5 bg-primary/50 rounded-[1px]" style={{ opacity: 0.3 + (i % 4) * 0.18 }}></div>
                 ))}
              </div>
           </div>
@@ -169,19 +163,19 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
              <div className="absolute top-[-12px] left-0 w-full h-[12px] bg-[#181f30] border-t border-primary/50" style={{ clipPath: 'polygon(0 100%, 100% 100%, 80% 0, 0 0)' }}></div>
              <div className="w-full h-full flex flex-col justify-around p-2 mt-1">
                 {[...Array(6)].map((_, i) => (
-                  <div key={`b3-${i}`} className="w-full h-[2px] bg-primary/60 rounded-full" style={{ opacity: 0.3 + (i % 3) * 0.25, boxShadow: '0 0 8px rgba(47,128,237,0.6)' }}></div>
+                  <div key={`b3-${i}`} className="w-full h-[2px] bg-primary/60 rounded-full" style={{ opacity: 0.3 + (i % 3) * 0.25 }}></div>
                 ))}
              </div>
           </div>
         </div>
         
-        {/* Smoke particles (Aligned to Main Chimney) */}
-        {smokeOffsets.map((smoke, i) => (
+        {/* Smoke particles (GPU-accelerated, no mix-blend-screen) */}
+        {isInView && smokeOffsets.map((smoke, i) => (
           <motion.div
             key={`smoke-${i}`}
-            animate={isInView ? { y: [-20, -140], x: [0, smoke.x], opacity: [0, 0.7, 0], scale: [1, 3.5] } : { opacity: 0 }}
-            transition={{ duration: 3.5, repeat: Infinity, delay: smoke.delay }}
-            className="absolute top-[25%] left-[40%] w-8 h-8 bg-gray-300 rounded-full blur-md mix-blend-screen transform-gpu"
+            animate={{ y: [-20, -140], x: [0, smoke.x], opacity: [0, 0.7, 0], scale: [1, 3.5] }}
+            transition={{ duration: smoke.duration, repeat: Infinity, delay: smoke.delay }}
+            className="absolute top-[25%] left-[40%] w-8 h-8 bg-gradient-to-t from-gray-400/80 to-gray-300/40 rounded-full blur-[6px] transform-gpu pointer-events-none"
           />
         ))}
         
@@ -194,7 +188,7 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
             y: [0, -3, 2, 0]
           } : { opacity: 0.8 }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[5%] left-[33%] w-[100px] h-[140px] border-[1.5px] border-primary bg-primary/10 z-20 shadow-[0_0_15px_rgba(47,128,237,0.2)]"
+          className="absolute top-[5%] left-[33%] w-[100px] h-[140px] border-[1.5px] border-primary bg-primary/10 z-20 shadow-[0_0_15px_rgba(47,128,237,0.2)] transform-gpu"
         >
           {/* Label Attached ABOVE */}
           <div className="absolute -top-[22px] left-[-1.5px] text-[7px] text-primary font-black bg-blue-900 px-2 py-1 flex items-center gap-1.5 border border-primary/50 shadow-md uppercase tracking-wider">
@@ -202,12 +196,14 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
             Smoke Detected
           </div>
 
-          {/* Localized Scanning Line */}
-          <motion.div
-            animate={isInView ? { top: ['0%', '100%', '0%'] } : { top: '50%' }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-            className="absolute left-0 w-full h-[1.5px] bg-accent shadow-[0_0_12px_#6FC8FF]"
-          />
+          {/* Localized Scanning Line (GPU translated) */}
+          {isInView && (
+            <motion.div
+              animate={{ y: [0, 138, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              className="absolute top-0 left-0 w-full h-[1.5px] bg-accent shadow-[0_0_12px_#6FC8FF] transform-gpu"
+            />
+          )}
 
           {/* Confidence Badge INSIDE Bottom Right */}
           <div className="absolute bottom-1 right-1 text-[8px] text-white font-black bg-primary px-1.5 py-0.5 rounded-sm shadow-md">
@@ -224,9 +220,9 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
         {/* Tiny AI Processing indicator on the side */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1 opacity-70">
            <div className="flex gap-0.5">
-             <motion.div animate={isInView ? { height: [4, 10, 4] } : { height: 6 }} transition={{ duration: 1, repeat: Infinity }} className="w-1 bg-primary rounded-full" />
-             <motion.div animate={isInView ? { height: [4, 12, 4] } : { height: 8 }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-1 bg-primary rounded-full" />
-             <motion.div animate={isInView ? { height: [4, 8, 4] } : { height: 6 }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-1 bg-primary rounded-full" />
+             <motion.div animate={isInView ? { scaleY: [0.5, 1.2, 0.5] } : { scaleY: 1 }} transition={{ duration: 1, repeat: Infinity }} className="w-1 h-3 bg-primary rounded-full origin-bottom transform-gpu" />
+             <motion.div animate={isInView ? { scaleY: [0.4, 1.4, 0.4] } : { scaleY: 1 }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-1 h-3 bg-primary rounded-full origin-bottom transform-gpu" />
+             <motion.div animate={isInView ? { scaleY: [0.5, 1.0, 0.5] } : { scaleY: 1 }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-1 h-3 bg-primary rounded-full origin-bottom transform-gpu" />
            </div>
            <span className="text-[6px] text-white font-mono uppercase ml-1">Processing</span>
         </div>
@@ -237,15 +233,12 @@ const AISmokeVisual = memo(({ isHovered, isInView = true }) => {
 
 AISmokeVisual.displayName = 'AISmokeVisual';
 
+// Optimized smoke particles (4 well-distributed particles instead of 8)
 const evidenceSmokeOffsets = [
-  { x: 0, delay: 0 },
-  { x: 14, delay: 0.4 },
-  { x: -16, delay: 0.8 },
-  { x: 10, delay: 1.2 },
-  { x: -12, delay: 1.6 },
-  { x: 18, delay: 2.0 },
-  { x: -8, delay: 2.4 },
-  { x: 12, delay: 2.8 },
+  { x: 0, delay: 0, duration: 3.5 },
+  { x: 14, delay: 0.8, duration: 3.8 },
+  { x: -15, delay: 1.6, duration: 4.0 },
+  { x: 12, delay: 2.4, duration: 3.6 },
 ];
 
 const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
@@ -262,7 +255,7 @@ const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
        {/* Foreground Factory */}
        <div className="absolute bottom-0 left-[20%] w-[35%] h-[55%] bg-gradient-to-t from-[#020617] to-[#1e293b] border-t border-l border-r border-[#334155] rounded-t-sm shadow-2xl">
           <div className="w-full h-full grid grid-cols-5 gap-1.5 p-3 mt-4">
-             {[...Array(15)].map((_, i) => <div key={`fac-${i}`} className="bg-yellow-500/20 w-full h-3 rounded-sm shadow-[0_0_5px_rgba(234,179,8,0.2)]"></div>)}
+             {[...Array(15)].map((_, i) => <div key={`fac-${i}`} className="bg-yellow-500/20 w-full h-3 rounded-sm"></div>)}
           </div>
           {/* Main Chimney */}
           <div className="absolute top-[-50px] left-[55%] w-[18px] h-[50px] bg-gradient-to-t from-[#1e293b] to-[#334155] border-t border-l border-r border-[#475569]">
@@ -274,13 +267,13 @@ const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
        <div className="absolute bottom-0 right-[15%] w-10 h-20 bg-green-900/30 rounded-t-full blur-[1px]"></div>
        <div className="absolute bottom-0 right-[22%] w-8 h-14 bg-green-900/40 rounded-t-full blur-[1px]"></div>
        
-       {/* Animated Smoke */}
-       {evidenceSmokeOffsets.map((smoke, i) => (
+       {/* Animated Smoke (GPU-accelerated, no mix-blend-screen) */}
+       {isInView && evidenceSmokeOffsets.map((smoke, i) => (
           <motion.div
             key={`es-${i}`}
-            animate={isInView ? { y: [-10, -120], x: [0, smoke.x], opacity: [0, 0.7, 0], scale: [1, 4] } : { opacity: 0 }}
-            transition={{ duration: 4, repeat: Infinity, delay: smoke.delay }}
-            className="absolute top-[40%] left-[34%] w-10 h-10 bg-gray-400 rounded-full blur-md mix-blend-screen transform-gpu"
+            animate={{ y: [-10, -120], x: [0, smoke.x], opacity: [0, 0.7, 0], scale: [1, 4] }}
+            transition={{ duration: smoke.duration, repeat: Infinity, delay: smoke.delay }}
+            className="absolute top-[40%] left-[34%] w-10 h-10 bg-gradient-to-t from-gray-400/80 to-gray-300/30 rounded-full blur-[6px] transform-gpu pointer-events-none"
           />
        ))}
     </div>
@@ -299,8 +292,8 @@ const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
           <div className="border-r border-b border-white"></div>
           <div className="border-r border-b border-white"></div>
           <div className="border-b border-white"></div>
-          <div className="border-r border-white"></div>
-          <div className="border-r border-white"></div>
+          <div className="border-r border-b border-white"></div>
+          <div className="border-r border-b border-white"></div>
           <div></div>
        </div>
 
@@ -321,7 +314,7 @@ const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
        <motion.div 
           animate={isInView ? { opacity: [0.6, 1, 0.6], scale: [0.98, 1.02, 0.98] } : { opacity: 0.8 }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="absolute top-[20%] left-[25%] w-[150px] h-[130px] border-[2px] border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)] z-30 flex flex-col justify-between p-1.5"
+          className="absolute top-[20%] left-[25%] w-[150px] h-[130px] border-[2px] border-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.3)] z-30 flex flex-col justify-between p-1.5 transform-gpu"
        >
           <div className="flex justify-between items-start">
              <div className="bg-red-600 text-white text-[8px] font-bold px-2 py-0.5 rounded-sm flex items-center gap-1.5 shadow-md">
@@ -378,7 +371,7 @@ const EvidenceVisual = memo(({ isHovered, isInView = true }) => (
                   <span className="text-[7px] text-white/80">92%</span>
                </div>
                <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                  <motion.div animate={isInView ? { width: ["0%", "100%", "100%", "0%"] } : { width: "92%" }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} className="h-full bg-gradient-to-r from-primary to-accent" />
+                  <motion.div animate={isInView ? { scaleX: [0, 1, 1, 0] } : { scaleX: 0.92 }} style={{ originX: 0 }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} className="h-full w-full bg-gradient-to-r from-primary to-accent transform-gpu" />
                </div>
              </motion.div>
              
@@ -455,7 +448,7 @@ const AlertVisual = memo(({ isHovered, isInView = true }) => {
              <motion.div variants={nodeVariants} initial="idle" animate={animateState} transition={{ delay: 0.8 }} className="absolute top-[60px] left-[175px] w-14 h-14 rounded-full border-2 border-red-500 bg-red-50 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.4)] z-10" style={{ borderColor: isHovered ? 'rgba(239,68,68,1)' : 'rgba(239,68,68,0.5)' }}>
                 <Bell className="w-5 h-5 text-red-500" />
                 <span className="text-[6px] font-black text-red-600 mt-0.5">ALERT</span>
-                {isHovered && isInView && <motion.div animate={{ scale: [1, 1.5, 2], opacity: [0.8, 0.4, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 rounded-full border border-red-500" />}
+                {isHovered && isInView && <motion.div animate={{ scale: [1, 1.5, 2], opacity: [0.8, 0.4, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 rounded-full border border-red-500 transform-gpu" />}
              </motion.div>
 
              {/* Dashboard Node */}
@@ -548,10 +541,10 @@ const GISVisual = memo(({ isHovered, isInView = true }) => (
      <motion.div 
        animate={isHovered ? { rotateX: 35, rotateZ: -10, scale: 1.25, y: 30 } : { rotateX: 25, rotateZ: -5, scale: 1.1, y: 15 }}
        transition={{ duration: 1.2, ease: "easeOut" }}
-       className="absolute inset-[-20%] w-[140%] h-[140%] bg-blue-50/50 border border-primary/20 flex origin-center"
+       className="absolute inset-[-20%] w-[140%] h-[140%] bg-blue-50/50 border border-primary/20 flex origin-center transform-gpu"
      >
-        {/* Terrain / Background map texture */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-multiply" />
+        {/* Terrain / Background map texture (Static low-opacity pattern) */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
         
         {/* Water body */}
         <div className="absolute top-[10%] right-[-5%] w-[40%] h-[120%] bg-blue-200/40 rounded-full blur-xl transform -rotate-45" />
@@ -586,9 +579,9 @@ const GISVisual = memo(({ isHovered, isInView = true }) => (
         {/* Data Packets flowing */}
         {isHovered && isInView && (
            <>
-              <motion.div animate={{ top: ["35%", "45%"], left: ["20%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#2F80ED] -translate-x-1/2 -translate-y-1/2" />
-              <motion.div animate={{ top: ["70%", "45%"], left: ["35%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "linear", delay: 0.3 }} className="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#2F80ED] -translate-x-1/2 -translate-y-1/2" />
-              <motion.div animate={{ top: ["22%", "45%"], left: ["70%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_red] -translate-x-1/2 -translate-y-1/2" />
+              <motion.div animate={{ top: ["35%", "45%"], left: ["20%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#2F80ED] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
+              <motion.div animate={{ top: ["70%", "45%"], left: ["35%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "linear", delay: 0.3 }} className="absolute w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_#2F80ED] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
+              <motion.div animate={{ top: ["22%", "45%"], left: ["70%", "42%"], opacity: [0, 1, 0] }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_red] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
            </>
         )}
 
@@ -603,20 +596,20 @@ const GISVisual = memo(({ isHovered, isInView = true }) => (
         <motion.div 
           animate={isHovered && isInView ? { opacity: [0, 0.8, 0], scale: [0.9, 1.1, 0.9] } : { opacity: 0 }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[10%] left-[55%] w-48 h-48 bg-red-500/30 rounded-full blur-3xl pointer-events-none"
+          className="absolute top-[10%] left-[55%] w-48 h-48 bg-red-500/30 rounded-full blur-2xl pointer-events-none transform-gpu"
         />
 
         {/* Sensors */}
         
         {/* Green Sensor */}
         <div className="absolute top-[35%] left-[20%] -translate-x-1/2 -translate-y-1/2">
-           {isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-green-500 rounded-full blur-sm" />}
+           {isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-green-500 rounded-full blur-sm transform-gpu" />}
            <div className="relative z-10 w-3 h-3 bg-green-500 border-[1.5px] border-white rounded-full shadow-lg" />
         </div>
         
         {/* Yellow Sensor */}
         <div className="absolute top-[70%] left-[35%] -translate-x-1/2 -translate-y-1/2">
-           {isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }} className="absolute inset-0 bg-yellow-400 rounded-full blur-sm" />}
+           {isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.6, 0] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }} className="absolute inset-0 bg-yellow-400 rounded-full blur-sm transform-gpu" />}
            <div className="relative z-10 w-3 h-3 bg-yellow-400 border-[1.5px] border-white rounded-full shadow-lg" />
         </div>
 
@@ -630,7 +623,7 @@ const GISVisual = memo(({ isHovered, isInView = true }) => (
              <motion.div 
                animate={{ rotate: 360 }} 
                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-               className="absolute top-1/2 left-1/2 w-48 h-48 -translate-x-1/2 -translate-y-1/2 origin-center rounded-full pointer-events-none"
+               className="absolute top-1/2 left-1/2 w-48 h-48 -translate-x-1/2 -translate-y-1/2 origin-center rounded-full pointer-events-none transform-gpu"
                style={{ background: 'conic-gradient(from 0deg, transparent 80%, rgba(47,128,237,0.4) 100%)' }}
              />
            )}
@@ -638,13 +631,13 @@ const GISVisual = memo(({ isHovered, isInView = true }) => (
 
         {/* Red Hotspot Sensor */}
         <div className="absolute top-[22%] left-[70%] -translate-x-1/2 -translate-y-1/2 z-20">
-           {isInView && <motion.div animate={{ scale: [1, 3.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-red-500 rounded-full blur-[2px]" />}
+           {isInView && <motion.div animate={{ scale: [1, 3.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-red-500 rounded-full blur-[2px] transform-gpu" />}
            <div className="relative z-10 w-4 h-4 bg-red-500 border-[2px] border-white rounded-full shadow-[0_0_15px_red]" />
         </div>
 
      </motion.div>
 
-     {/* Floating UI Elements (Not rotated, standard perspective) */}
+     {/* Floating UI Elements */}
 
      {/* Incident Popup */}
      <motion.div 
@@ -769,22 +762,22 @@ const SatelliteVisual = memo(({ isHovered, isInView = true }) => {
          initial={{ opacity: 0 }}
          animate={isHovered && isInView ? { opacity: [0, 0.8, 0.6, 0.8] } : { opacity: 0 }}
          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-         className="absolute inset-0 z-10"
+         className="absolute inset-0 z-10 transform-gpu"
        >
           {/* Main Hotspot 1 (Industrial Right) */}
           <div 
-             className="absolute top-[30%] right-[20%] w-64 h-64 -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-screen"
-             style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.9) 0%, rgba(249,115,22,0.6) 25%, rgba(234,179,8,0.4) 50%, rgba(34,197,94,0.1) 75%, rgba(59,130,246,0) 100%)' }}
+             className="absolute top-[30%] right-[20%] w-64 h-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.85) 0%, rgba(249,115,22,0.55) 25%, rgba(234,179,8,0.35) 50%, rgba(34,197,94,0.1) 75%, transparent 100%)' }}
           />
           {/* Main Hotspot 2 (Industrial Left) */}
           <div 
-             className="absolute bottom-[30%] left-[30%] w-48 h-48 -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-screen"
-             style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.8) 0%, rgba(249,115,22,0.5) 25%, rgba(234,179,8,0.3) 50%, rgba(34,197,94,0.1) 75%, rgba(59,130,246,0) 100%)' }}
+             className="absolute bottom-[30%] left-[30%] w-48 h-48 -translate-x-1/2 -translate-y-1/2 rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.75) 0%, rgba(249,115,22,0.45) 25%, rgba(234,179,8,0.25) 50%, rgba(34,197,94,0.1) 75%, transparent 100%)' }}
           />
           {/* Minor Hotspot */}
           <div 
-             className="absolute top-[40%] left-[50%] w-32 h-32 -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-screen"
-             style={{ background: 'radial-gradient(circle, rgba(234,179,8,0.6) 0%, rgba(34,197,94,0.3) 50%, rgba(59,130,246,0) 100%)' }}
+             className="absolute top-[40%] left-[50%] w-32 h-32 -translate-x-1/2 -translate-y-1/2 rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(234,179,8,0.55) 0%, rgba(34,197,94,0.25) 50%, transparent 100%)' }}
           />
        </motion.div>
 
@@ -793,28 +786,28 @@ const SatelliteVisual = memo(({ isHovered, isInView = true }) => {
           <div className="absolute inset-0 z-20">
              {/* Hotspot 1 Marker */}
              <div className="absolute top-[30%] right-[20%] -translate-x-1/2 -translate-y-1/2">
-                <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-red-500 rounded-full blur-[2px]" />
+                <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-red-500 rounded-full blur-[2px] transform-gpu" />
                 <div className="relative w-2 h-2 bg-white rounded-full shadow-[0_0_10px_white]" />
              </div>
              
              {/* Hotspot 2 Marker */}
              <div className="absolute bottom-[30%] left-[30%] -translate-x-1/2 -translate-y-1/2">
-                <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.8, repeat: Infinity, delay: 0.5 }} className="absolute inset-0 bg-orange-500 rounded-full blur-[2px]" />
+                <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.8, repeat: Infinity, delay: 0.5 }} className="absolute inset-0 bg-orange-500 rounded-full blur-[2px] transform-gpu" />
                 <div className="relative w-2 h-2 bg-white rounded-full shadow-[0_0_10px_white]" />
              </div>
 
              {/* Data packets flowing to center */}
-             <motion.div animate={{ top: ["30%", "50%"], left: ["80%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_#60a5fa] -translate-x-1/2 -translate-y-1/2" />
-             <motion.div animate={{ top: ["70%", "50%"], left: ["30%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 2.2, repeat: Infinity, delay: 0.5 }} className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_#60a5fa] -translate-x-1/2 -translate-y-1/2" />
+             <motion.div animate={{ top: ["30%", "50%"], left: ["80%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_#60a5fa] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
+             <motion.div animate={{ top: ["70%", "50%"], left: ["30%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 2.2, repeat: Infinity, delay: 0.5 }} className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_#60a5fa] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
           </div>
        )}
 
-       {/* Satellite Scanning Beam Overlay */}
+       {/* Satellite Scanning Beam Overlay (GPU transformed x instead of left) */}
        {isHovered && isInView && (
           <motion.div 
-            animate={{ left: ['-100%', '200%'] }} 
+            animate={{ x: ['-100%', '300%'] }} 
             transition={{ duration: 4, repeat: Infinity, ease: 'linear' }} 
-            className="absolute top-0 w-[40%] h-full z-20 pointer-events-none"
+            className="absolute top-0 left-0 w-[40%] h-full z-20 pointer-events-none transform-gpu"
             style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, rgba(47,128,237,0.4) 98%, transparent 100%)', transform: 'skewX(-20deg)' }}
           >
              <div className="absolute top-0 right-0 w-1 h-full bg-primary/60 blur-[1px]" />
@@ -832,7 +825,7 @@ const SatelliteVisual = memo(({ isHovered, isInView = true }) => {
        >
           <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center border border-primary/50 relative">
              <Navigation className="w-4 h-4 text-primary" />
-             {isHovered && isInView && <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 rounded-full border border-primary/30 border-t-transparent" />}
+             {isHovered && isInView && <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute inset-0 rounded-full border border-primary/30 border-t-transparent transform-gpu" />}
           </div>
           <div>
              <div className="text-[7px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
@@ -892,7 +885,7 @@ const SatelliteVisual = memo(({ isHovered, isInView = true }) => {
                 <span className="text-[12px] font-bold">%</span>
              </div>
              <div className="w-16 h-1 bg-primary/20 rounded-full mt-1.5 overflow-hidden">
-                <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: "98%" } : { width: "0%" }} transition={{ duration: 1.5, ease: "easeOut" }} className="h-full bg-primary" />
+                <motion.div initial={{ scaleX: 0 }} animate={isHovered ? { scaleX: 1 } : { scaleX: 0 }} style={{ originX: 0 }} transition={{ duration: 1.5, ease: "easeOut" }} className="h-full w-full bg-primary transform-gpu" />
              </div>
           </div>
        </motion.div>
@@ -924,7 +917,7 @@ const DashboardVisual = memo(({ isHovered, isInView = true }) => {
              <div className="text-[8px] font-bold text-gray-400">2026-08-03 22:35 UTC</div>
              <div className="relative">
                 <Bell className="w-4 h-4 text-gray-400" />
-                {isHovered && isInView && <motion.div animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }} transition={{ duration: 1, repeat: Infinity }} className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-white" />}
+                {isHovered && isInView && <motion.div animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }} transition={{ duration: 1, repeat: Infinity }} className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-white transform-gpu" />}
              </div>
              <div className="w-6 h-6 bg-gradient-to-tr from-gray-200 to-gray-100 rounded-full border border-gray-300 shadow-inner flex items-center justify-center">
                 <Users className="w-3 h-3 text-gray-400" />
@@ -991,11 +984,13 @@ const DashboardVisual = memo(({ isHovered, isInView = true }) => {
                 </svg>
 
                 {/* Pollution Hotspot */}
-                <motion.div animate={isInView ? { scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] } : { opacity: 0.4 }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[30%] left-[60%] w-24 h-24 bg-red-500 rounded-full blur-2xl" />
+                {isInView && (
+                  <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[30%] left-[60%] w-24 h-24 bg-red-500 rounded-full blur-2xl transform-gpu" />
+                )}
                 
                 {/* Radar Pulse around central station */}
                 {isInView && (
-                  <motion.div animate={{ scale: [0, 3], opacity: [0.6, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[50%] left-[40%] w-16 h-16 bg-primary rounded-full border border-primary/50 -translate-x-1/2 -translate-y-1/2" />
+                  <motion.div animate={{ scale: [0, 3], opacity: [0.6, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[50%] left-[40%] w-16 h-16 bg-primary rounded-full border border-primary/50 -translate-x-1/2 -translate-y-1/2 transform-gpu" />
                 )}
                 <div className="absolute top-[50%] left-[40%] w-2.5 h-2.5 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 shadow-[0_0_15px_#2F80ED]" />
 
@@ -1006,7 +1001,7 @@ const DashboardVisual = memo(({ isHovered, isInView = true }) => {
 
                 {/* Data Packets flowing to center */}
                 {isHovered && isInView && (
-                   <motion.div animate={{ top: ["20%", "50%"], left: ["30%", "40%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_white] -translate-x-1/2 -translate-y-1/2" />
+                   <motion.div animate={{ top: ["20%", "50%"], left: ["30%", "40%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_white] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
                 )}
              </div>
 
@@ -1047,14 +1042,14 @@ const DashboardVisual = memo(({ isHovered, isInView = true }) => {
                    <motion.path 
                      initial={{ pathLength: 0 }} 
                      animate={isHovered && isInView ? { pathLength: 1 } : { pathLength: 0 }} 
-                     transition={{ duration: 2, ease: "easeInOut" }}
+                     transition={{ duration: 2, ease: "easeInOut" }} 
                      d="M 0 50 Q 15 40 25 55 T 50 30 T 75 60 T 100 20" 
                      fill="none" stroke="#2F80ED" strokeWidth="2.5" 
                    />
                    <motion.path 
                      initial={{ opacity: 0 }} 
                      animate={isHovered && isInView ? { opacity: 1 } : { opacity: 0 }} 
-                     transition={{ duration: 2, ease: "easeInOut", delay: 0.2 }}
+                     transition={{ duration: 2, ease: "easeInOut", delay: 0.2 }} 
                      d="M 0 50 Q 15 40 25 55 T 50 30 T 75 60 T 100 20 L 100 100 L 0 100 Z" 
                      fill="url(#chartGrad)" 
                    />
@@ -1066,8 +1061,8 @@ const DashboardVisual = memo(({ isHovered, isInView = true }) => {
                 <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest px-1 mb-1.5 z-10 bg-gray-50">Incident Feed</span>
                 <motion.div 
                   animate={isHovered && isInView ? { y: [0, -60] } : { y: 0 }} 
-                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                  className="flex flex-col gap-1.5"
+                  transition={{ duration: 6, repeat: Infinity, ease: "linear" }} 
+                  className="flex flex-col gap-1.5 transform-gpu"
                 >
                    <div className="bg-white rounded border border-gray-100 p-1.5 flex items-center gap-2 shadow-sm">
                       <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_5px_red]" />
@@ -1114,7 +1109,7 @@ const AnalyticsVisual = memo(({ isHovered, isInView = true }) => {
     <div className="relative w-full h-full bg-white/95 rounded-2xl border border-white shadow-[0_15px_40px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden group-hover:-translate-y-3 group-hover:-translate-x-1 transition-transform duration-700 pointer-events-none p-4 z-10">
        
        {/* Background Grid */}
-       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none mix-blend-multiply" />
+       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
        
        {/* Top Row: KPIs */}
        <div className="flex justify-between items-start gap-2 mb-3">
@@ -1182,7 +1177,7 @@ const AnalyticsVisual = memo(({ isHovered, isInView = true }) => {
                      initial={{ scale: 0, opacity: 0 }} 
                      animate={{ scale: [1, 2.5, 1], opacity: [1, 0, 1] }} 
                      transition={{ duration: 2, repeat: Infinity, delay: 2.2 }} 
-                     className="drop-shadow-[0_0_8px_red]" 
+                     className="drop-shadow-[0_0_8px_red] transform-gpu" 
                    />
                 )}
              </svg>
@@ -1207,7 +1202,7 @@ const AnalyticsVisual = memo(({ isHovered, isInView = true }) => {
                   initial={{ x: "-10%" }} 
                   animate={isHovered && isInView ? { x: "900%" } : { x: "-10%" }} 
                   transition={{ duration: 6, repeat: Infinity, ease: "linear" }} 
-                  className="absolute bottom-0 left-3 w-[2px] h-full bg-primary/40 shadow-[0_0_5px_#2F80ED]" 
+                  className="absolute bottom-0 left-3 w-[2px] h-full bg-primary/40 shadow-[0_0_5px_#2F80ED] transform-gpu" 
                 />
              </div>
           </div>
@@ -1226,10 +1221,10 @@ const AnalyticsVisual = memo(({ isHovered, isInView = true }) => {
                { text: "PM2.5 trending down", color: "text-blue-700", icon: <MapPin className="w-3.5 h-3.5 text-primary"/>, bg: "bg-blue-50/80", border: "border-blue-100" },
              ].map((insight, idx) => (
                 <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={isHovered ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
-                  transition={{ duration: 0.5, delay: 0.5 + (idx * 0.25) }}
+                  key={idx} 
+                  initial={{ opacity: 0, x: 20 }} 
+                  animate={isHovered ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }} 
+                  transition={{ duration: 0.5, delay: 0.5 + (idx * 0.25) }} 
                   className={`flex items-center gap-2 p-2 rounded-lg border ${insight.bg} ${insight.border} shadow-sm`}
                 >
                    <div className="w-5 h-5 bg-white rounded-md flex items-center justify-center shadow-sm border border-white/50">{insight.icon}</div>
@@ -1278,7 +1273,7 @@ const CloudVisual = memo(({ isHovered, isInView = true }) => {
                    <span className="text-[6px] font-bold text-gray-700 truncate">Smoke_001.jpg</span>
                 </div>
                 <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                   <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: "100%" } : { width: "0%" }} transition={{ duration: 1.5, ease: "easeOut" }} className="h-full bg-green-500" />
+                   <motion.div initial={{ scaleX: 0 }} animate={isHovered ? { scaleX: 1 } : { scaleX: 0 }} style={{ originX: 0 }} transition={{ duration: 1.5, ease: "easeOut" }} className="h-full w-full bg-green-500 transform-gpu" />
                 </div>
                 <div className="flex justify-between items-center mt-1">
                    <span className="text-[5px] text-gray-400 uppercase font-bold">Uploading...</span>
@@ -1293,7 +1288,7 @@ const CloudVisual = memo(({ isHovered, isInView = true }) => {
                    <span className="text-[6px] font-bold text-gray-700 truncate">Factory_002.jpg</span>
                 </div>
                 <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
-                   <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: "65%" } : { width: "0%" }} transition={{ duration: 2, ease: "easeOut", delay: 0.5 }} className="h-full bg-blue-500" />
+                   <motion.div initial={{ scaleX: 0 }} animate={isHovered ? { scaleX: 0.65 } : { scaleX: 0 }} style={{ originX: 0 }} transition={{ duration: 2, ease: "easeOut", delay: 0.5 }} className="h-full w-full bg-blue-500 transform-gpu" />
                 </div>
                 <div className="flex justify-between items-center mt-1">
                    <span className="text-[5px] text-gray-400 uppercase font-bold">Uploading...</span>
@@ -1331,20 +1326,20 @@ const CloudVisual = memo(({ isHovered, isInView = true }) => {
              {/* Data particles */}
              {isHovered && isInView && (
                 <>
-                   <motion.div animate={{ left: ["-20%", "50%"], top: ["50%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_blue] -translate-x-1/2 -translate-y-1/2" />
-                   <motion.div animate={{ left: ["-20%", "50%"], top: ["50%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.7 }} className="absolute w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_green] -translate-x-1/2 -translate-y-1/2" />
+                   <motion.div animate={{ left: ["-20%", "50%"], top: ["50%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }} className="absolute w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_blue] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
+                   <motion.div animate={{ left: ["-20%", "50%"], top: ["50%", "50%"], opacity: [0, 1, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: 0.7 }} className="absolute w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_green] -translate-x-1/2 -translate-y-1/2 transform-gpu" />
                 </>
              )}
 
              {/* Main Cloud */}
              <motion.div 
-               animate={isHovered && isInView ? { scale: [1, 1.05, 1], filter: ["drop-shadow(0 0 0px rgba(47,128,237,0))", "drop-shadow(0 0 15px rgba(47,128,237,0.4))", "drop-shadow(0 0 0px rgba(47,128,237,0))"] } : {}}
+               animate={isHovered && isInView ? { scale: [1, 1.05, 1] } : {}}
                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-               className="relative z-10 w-16 h-16 bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col items-center justify-center gap-1"
+               className="relative z-10 w-16 h-16 bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col items-center justify-center gap-1 transform-gpu"
              >
                 <div className="relative">
                    <Cloud className="w-6 h-6 text-primary" />
-                   {isHovered && isInView && <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute -bottom-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+                   {isHovered && isInView && <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute -bottom-1 -right-1 w-3 h-3 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 transform-gpu">
                       <Activity className="w-2 h-2 text-accent" />
                    </motion.div>}
                 </div>
@@ -1356,8 +1351,8 @@ const CloudVisual = memo(({ isHovered, isInView = true }) => {
           <div className="h-14 bg-gray-50/80 rounded-xl border border-gray-100 p-1.5 flex flex-col overflow-hidden relative shadow-sm">
              <motion.div 
                animate={isHovered && isInView ? { y: [0, -45] } : { y: 0 }} 
-               transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-               className="flex flex-col gap-1"
+               transition={{ duration: 5, repeat: Infinity, ease: "linear" }} 
+               className="flex flex-col gap-1 transform-gpu"
              >
                 <div className="bg-white rounded border border-gray-100 p-1 flex items-center justify-between shadow-sm">
                    <div className="flex items-center gap-1.5">
@@ -1446,7 +1441,7 @@ const CitizenVisual = memo(({ isHovered, isInView = true }) => {
             <div className="relative flex-1 flex flex-col justify-between pl-4">
                {/* Vertical Connecting Line */}
                <div className="absolute top-2 bottom-2 left-[7px] w-[2px] bg-gray-100 rounded-full overflow-hidden">
-                  <motion.div initial={{ height: "0%" }} animate={isHovered ? { height: "75%" } : { height: "75%" }} transition={{ duration: 1.5, ease: "easeInOut" }} className="w-full bg-primary" />
+                  <motion.div initial={{ scaleY: 0 }} animate={isHovered ? { scaleY: 0.75 } : { scaleY: 0.75 }} style={{ originY: 0 }} transition={{ duration: 1.5, ease: "easeInOut" }} className="w-full h-full bg-primary transform-gpu" />
                </div>
 
                {/* Timeline Steps */}
@@ -1461,7 +1456,7 @@ const CitizenVisual = memo(({ isHovered, isInView = true }) => {
                     key={idx} 
                     initial={{ opacity: 0, x: -10 }} 
                     animate={isHovered ? { opacity: 1, x: 0 } : { opacity: 1, x: 0 }} 
-                    transition={{ duration: 0.3, delay: idx * 0.3 }}
+                    transition={{ duration: 0.3, delay: idx * 0.3 }} 
                     className="relative flex items-center justify-between"
                   >
                      {/* Step Node */}
@@ -1469,7 +1464,7 @@ const CitizenVisual = memo(({ isHovered, isInView = true }) => {
                         {step.icon ? step.icon : (step.active && !step.pulsing ? (
                            <svg className="w-2 h-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                         ) : <div className={`w-1.5 h-1.5 rounded-full ${step.bg}`} />)}
-                        {step.pulsing && isHovered && isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-orange-500 rounded-full" />}
+                        {step.pulsing && isHovered && isInView && <motion.div animate={{ scale: [1, 2.5], opacity: [0.8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-0 bg-orange-500 rounded-full transform-gpu" />}
                      </div>
                      <div className="flex flex-col ml-1">
                         <span className={`text-[7px] font-black ${step.active ? (step.pulsing ? 'text-orange-600' : 'text-gray-800') : 'text-gray-400'}`}>{step.title}</span>
@@ -1507,7 +1502,7 @@ const CitizenVisual = memo(({ isHovered, isInView = true }) => {
                <span className="text-[8px] font-black text-white">80%</span>
             </div>
             <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-               <motion.div initial={{ width: "0%" }} animate={isHovered ? { width: "80%" } : { width: "80%" }} transition={{ duration: 2, ease: "easeOut" }} className="h-full bg-gradient-to-r from-green-500 to-green-400" />
+               <motion.div initial={{ scaleX: 0 }} animate={isHovered ? { scaleX: 0.8 } : { scaleX: 0.8 }} style={{ originX: 0 }} transition={{ duration: 2, ease: "easeOut" }} className="h-full w-full bg-gradient-to-r from-green-500 to-green-400 transform-gpu" />
             </div>
          </div>
 
@@ -1519,8 +1514,8 @@ const CitizenVisual = memo(({ isHovered, isInView = true }) => {
                <motion.div 
                  initial={{ y: 0 }} 
                  animate={isHovered && isInView ? { y: -70 } : { y: 0 }} 
-                 transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                 className="flex flex-col gap-1.5 absolute w-full"
+                 transition={{ duration: 8, repeat: Infinity, ease: "linear" }} 
+                 className="flex flex-col gap-1.5 absolute w-full transform-gpu"
                >
                   {[
                     { t: "10:40 AM", m: "Inspection Started on-site", icon: <MapPin className="w-2.5 h-2.5 text-orange-500"/>, bg: "bg-orange-50 border-orange-100" },
@@ -1559,13 +1554,14 @@ CitizenVisual.displayName = 'CitizenVisual';
 // CORE FEATURE CARD COMPONENT
 // ==========================================
 const FeatureCard = memo(({ feature, index }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { margin: "100px 0px 100px 0px" });
+  const cardRef = useRef(null);
+  // Viewport detection scoped specifically to this card
+  const isInView = useInView(cardRef, { margin: "50px 0px 50px 0px" });
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <motion.div
-      ref={ref}
+      ref={cardRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       initial={{ opacity: 0, y: 30 }}
@@ -1640,12 +1636,12 @@ const Features = memo(() => {
 
   return (
     <section ref={sectionRef} id="features" className="py-32 bg-[var(--color-bg-light)] relative overflow-hidden">
-      {/* Premium Background ambient visuals */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] mix-blend-overlay pointer-events-none" />
-      <div className="absolute top-[10%] left-[-10%] w-[1000px] h-[1000px] bg-[radial-gradient(circle,_rgba(47,128,237,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none transform-gpu" />
-      <div className="absolute bottom-[5%] right-[-10%] w-[1200px] h-[1200px] bg-[radial-gradient(circle,_rgba(111,200,255,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none transform-gpu" />
+      {/* Background ambient visuals */}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none" />
+      <div className="absolute top-[10%] left-[-10%] w-[800px] h-[800px] bg-[radial-gradient(circle,_rgba(47,128,237,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none transform-gpu" />
+      <div className="absolute bottom-[5%] right-[-10%] w-[900px] h-[900px] bg-[radial-gradient(circle,_rgba(111,200,255,0.08)_0%,_rgba(0,0,0,0)_70%)] rounded-full pointer-events-none transform-gpu" />
       
-      {/* Floating particles */}
+      {/* Floating particles - active only when section is in view */}
       {isInView && (
         <>
           <motion.div animate={{ y: [0, -80, 0], opacity: [0.2, 0.6, 0.2] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} className="absolute top-[15%] left-[15%] w-3 h-3 bg-primary/40 rounded-full blur-[2px] transform-gpu" />
@@ -1686,7 +1682,7 @@ const Features = memo(() => {
           className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-7 auto-rows-[420px]"
         >
           {features.map((feat, idx) => (
-            <FeatureCard key={idx} feature={feat} />
+            <FeatureCard key={idx} feature={feat} index={idx} />
           ))}
         </motion.div>
       </div>

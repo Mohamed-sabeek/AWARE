@@ -64,7 +64,7 @@ const statusBadges = [
 const TechnologyStack = memo(() => {
   const [hoveredTech, setHoveredTech] = useState(null);
   const sectionRef = useRef(null);
-  const isInView = useInView(sectionRef, { margin: "100px 0px 100px 0px" });
+  const isInView = useInView(sectionRef, { margin: "50px 0px 50px 0px" });
 
   // Animation variants
   const containerVariants = {
@@ -90,23 +90,11 @@ const TechnologyStack = memo(() => {
   return (
     <section ref={sectionRef} id="technology" className="py-32 relative bg-[var(--color-bg-light)] overflow-hidden">
       
-      {/* Background Ambience */}
+      {/* Background Ambience (Static radial gradients, no mix-blend) */}
       <div className="absolute inset-0 pointer-events-none">
-        {isInView && (
-          <>
-            <motion.div 
-              animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-1/4 left-1/4 w-[35rem] h-[35rem] bg-blue-400/20 rounded-full blur-[100px] transform-gpu"
-            />
-            <motion.div 
-              animate={{ scale: [1, 1.15, 1], opacity: [0.08, 0.12, 0.08] }}
-              transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-              className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-indigo-400/15 rounded-full blur-[120px] transform-gpu"
-            />
-          </>
-        )}
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.15] mix-blend-soft-light"></div>
+        <div className="absolute top-1/4 left-1/4 w-[35rem] h-[35rem] bg-[radial-gradient(circle,_rgba(96,165,250,0.12)_0%,_transparent_70%)] rounded-full transform-gpu" />
+        <div className="absolute bottom-1/4 right-1/4 w-[40rem] h-[40rem] bg-[radial-gradient(circle,_rgba(129,140,248,0.1)_0%,_transparent_70%)] rounded-full transform-gpu" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.05]"></div>
       </div>
 
       <div className="container mx-auto px-6 md:px-12 relative z-10 max-w-[1400px]">
@@ -162,9 +150,9 @@ const TechnologyStack = memo(() => {
                     {/* Logo Container */}
                     <motion.div 
                       whileHover={{ y: -6, scale: 1.1 }}
-                      animate={isInView ? { rotate: hoveredTech === item.id ? 0 : [0, 2, -2, 0] } : { rotate: 0 }}
+                      animate={isInView ? { rotate: hoveredTech === item.id ? 0 : [0, 1.5, -1.5, 0] } : { rotate: 0 }}
                       transition={{ 
-                        rotate: { duration: 4, repeat: Infinity, ease: 'easeInOut' },
+                        rotate: { duration: 6, repeat: Infinity, ease: 'easeInOut' },
                         scale: { type: 'spring', stiffness: 400, damping: 25 },
                         y: { type: 'spring', stiffness: 400, damping: 25 }
                       }}

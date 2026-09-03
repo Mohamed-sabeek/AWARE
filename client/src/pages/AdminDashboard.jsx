@@ -264,7 +264,7 @@ const AdminDashboard = () => {
   const totalEvidenceCount = evidenceCount || dashboardStats?.evidenceCount || 0;
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col min-h-full w-full">
       {/* Top Header */}
       <PageHeader 
         title="Dashboard"

@@ -39,20 +39,25 @@ const evidenceSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
+  locationName: {
+    type: String,
+    required: false,
+    default: null
+  },
   location: {
     type: String,
-    required: true,
-    default: 'ESP32 Station'
+    required: false,
+    default: null
   },
   latitude: {
     type: Number,
     required: false,
-    default: 0
+    default: null
   },
   longitude: {
     type: Number,
     required: false,
-    default: 0
+    default: null
   },
   sensorId: {
     type: String,

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Evidence from '../models/Evidence.js';
 import Sensor from '../models/Sensor.js';
 import cloudinary from '../config/cloudinary.js';
@@ -40,11 +41,27 @@ export const createEvidence = async (req, res) => {
   try {
     const { 
       evidenceId, detectionType, aqi, confidence, 
-      location, latitude, longitude, sensorId, cameraId 
+      location, locationName, latitude, longitude, sensorId, cameraId, voltage
     } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    const targetDeviceId = (sensorId || cameraId || 'ESP32-CAM-001').trim();
+
+    // Find sensor location snapshot if not explicitly provided
+    let snapshotLocationName = (locationName || location || null);
+    let snapshotLatitude = latitude !== undefined && latitude !== null ? Number(latitude) : null;
+    let snapshotLongitude = longitude !== undefined && longitude !== null ? Number(longitude) : null;
+
+    if (!snapshotLocationName || snapshotLatitude === null || snapshotLongitude === null) {
+      const sensor = await Sensor.findOne({ sensorId: targetDeviceId });
+      if (sensor) {
+        if (!snapshotLocationName) snapshotLocationName = sensor.locationName || sensor.location || null;
+        if (snapshotLatitude === null && typeof sensor.latitude === 'number') snapshotLatitude = sensor.latitude;
+        if (snapshotLongitude === null && typeof sensor.longitude === 'number') snapshotLongitude = sensor.longitude;
+      }
     }
 
     // Upload image to Cloudinary using a buffer stream
@@ -60,29 +77,31 @@ export const createEvidence = async (req, res) => {
     });
 
     const evidence = new Evidence({
-      evidenceId,
+      evidenceId: evidenceId || `EVT-${Date.now()}`,
       imageUrl: uploadResult.secure_url,
       cloudinaryPublicId: uploadResult.public_id,
-      detectionType,
-      aqi,
-      confidence,
-      location,
-      latitude,
-      longitude,
-      sensorId,
-      cameraId
+      detectionType: detectionType || 'Threshold Exceeded',
+      aqi: aqi || 0,
+      confidence: confidence || 95,
+      voltage: voltage !== undefined ? Number(voltage) : 0,
+      location: snapshotLocationName,
+      locationName: snapshotLocationName,
+      latitude: snapshotLatitude,
+      longitude: snapshotLongitude,
+      sensorId: targetDeviceId,
+      cameraId: cameraId || targetDeviceId
     });
 
     const createdEvidence = await evidence.save();
 
     await ActivityLog.create({
-      deviceName: location || 'ESP32-CAM',
-      deviceId: sensorId,
+      deviceName: snapshotLocationName || targetDeviceId,
+      deviceId: targetDeviceId,
       category: 'Evidence',
       severity: 'Success',
-      description: `New evidence captured for ${detectionType}`,
-      location: location,
-      metadata: { evidenceId, confidence, aqi }
+      description: `New evidence captured for ${detectionType || 'Incident'}`,
+      location: snapshotLocationName || 'Location Not Configured',
+      metadata: { evidenceId: createdEvidence.evidenceId, confidence, aqi, locationName: snapshotLocationName }
     });
 
     res.status(201).json(createdEvidence);
@@ -112,12 +131,12 @@ export const updateEvidence = async (req, res) => {
 
       if (prevStatus !== updatedEvidence.status) {
         await ActivityLog.create({
-          deviceName: evidence.location || 'ESP32-CAM',
+          deviceName: evidence.locationName || evidence.location || 'ESP32-CAM',
           deviceId: evidence.sensorId,
           category: 'Evidence',
           severity: updatedEvidence.status === 'Verified' ? 'Success' : (updatedEvidence.status === 'Rejected' ? 'Warning' : 'Info'),
           description: `Evidence ${evidence.evidenceId} marked as ${updatedEvidence.status}`,
-          location: evidence.location,
+          location: evidence.locationName || evidence.location,
           metadata: { evidenceId: evidence.evidenceId }
         });
       }
@@ -156,7 +175,7 @@ export const deleteEvidence = async (req, res) => {
   }
 };
 
-// @desc    Upload real ESP32-CAM JPEG image & create Evidence record
+// @desc    Upload real ESP32-CAM JPEG image & create Evidence record with sensor location snapshot
 // @route   POST /api/evidence/upload
 // @access  Public (Hardware Ingestion)
 export const uploadEvidenceFromDevice = async (req, res) => {
@@ -168,7 +187,7 @@ export const uploadEvidenceFromDevice = async (req, res) => {
       });
     }
 
-    const { deviceId, sensorId, voltage, timestamp, detectionType, location } = req.body;
+    const { deviceId, sensorId, voltage, timestamp, detectionType } = req.body;
     const targetDeviceId = (deviceId || sensorId || 'ESP32-CAM-001').trim();
     const parsedVoltage = voltage !== undefined && voltage !== '' ? Number(voltage) : 0;
 
@@ -180,14 +199,42 @@ export const uploadEvidenceFromDevice = async (req, res) => {
       }
     }
 
-    // Find device to pull location / metadata
-    const sensor = await Sensor.findOne({ sensorId: targetDeviceId });
+    // 1. Find device to pull location snapshot
+    let sensor = await Sensor.findOne({ sensorId: targetDeviceId });
+    if (!sensor && mongoose.Types.ObjectId.isValid(targetDeviceId)) {
+      sensor = await Sensor.findById(targetDeviceId);
+    }
+
+    // 2. Read location snapshot from the sensor record
+    let snapshotLocationName = null;
+    let snapshotLatitude = null;
+    let snapshotLongitude = null;
+
+    if (sensor) {
+      const loc = sensor.locationName || sensor.location;
+      if (loc && loc.trim()) {
+        snapshotLocationName = loc.trim();
+      }
+
+      if (typeof sensor.latitude === 'number' && !isNaN(sensor.latitude) && sensor.latitude !== 0) {
+        snapshotLatitude = sensor.latitude;
+      }
+      if (typeof sensor.longitude === 'number' && !isNaN(sensor.longitude) && sensor.longitude !== 0) {
+        snapshotLongitude = sensor.longitude;
+      }
+    }
+
+    if (!snapshotLocationName && snapshotLatitude === null && snapshotLongitude === null) {
+      console.warn(`[Evidence Upload] Note: Sensor '${targetDeviceId}' has no configured fixed location. Storing null location.`);
+    }
+
     const threshold = sensor?.threshold !== undefined ? sensor.threshold : 0.400;
     const isThresholdExceeded = parsedVoltage >= threshold;
 
     const evidenceId = `EVT-${Date.now()}`;
     const imageUrl = `/uploads/${req.file.filename}`;
 
+    // 3. Create Evidence record with location snapshot
     const evidence = await Evidence.create({
       evidenceId,
       imageUrl,
@@ -196,45 +243,55 @@ export const uploadEvidenceFromDevice = async (req, res) => {
       detectionType: detectionType || (isThresholdExceeded ? 'Threshold Exceeded' : 'Monitoring Snapshot'),
       aqi: 0,
       confidence: 95,
-      location: location || sensor?.location || 'ESP32 Station',
-      latitude: sensor?.latitude || 0,
-      longitude: sensor?.longitude || 0,
+      location: snapshotLocationName,
+      locationName: snapshotLocationName,
+      latitude: snapshotLatitude,
+      longitude: snapshotLongitude,
       sensorId: targetDeviceId,
       cameraId: targetDeviceId,
       status: 'Verified',
       createdAt: readingTimestamp
     });
 
-    // Create ActivityLog entry
+    // 4. Create ActivityLog entry
     await ActivityLog.create({
-      deviceName: sensor?.location || 'ESP32-CAM',
+      deviceName: snapshotLocationName || targetDeviceId,
       deviceId: targetDeviceId,
       category: 'Evidence',
       severity: isThresholdExceeded ? 'Critical' : 'Success',
       description: `Visual evidence captured: ${evidence.evidenceId} (Voltage: ${parsedVoltage.toFixed(3)} V)`,
-      location: evidence.location,
+      location: snapshotLocationName || 'Location Not Configured',
       metadata: {
         evidenceId: evidence.evidenceId,
         voltage: parsedVoltage,
-        imageUrl: evidence.imageUrl
+        imageUrl: evidence.imageUrl,
+        locationName: snapshotLocationName,
+        latitude: snapshotLatitude,
+        longitude: snapshotLongitude
       }
     });
 
-    // Broadcast real-time Socket.io event
+    // 5. Broadcast real-time Socket.io event with location snapshot
     const io = req.app.get('io');
     if (io) {
       io.emit('evidence-captured', {
         evidenceId: evidence.evidenceId,
         imageUrl: evidence.imageUrl,
         deviceId: targetDeviceId,
+        sensorId: targetDeviceId,
         voltage: parsedVoltage,
         detectionType: evidence.detectionType,
-        location: evidence.location,
+        location: snapshotLocationName,
+        locationName: snapshotLocationName,
+        latitude: snapshotLatitude,
+        longitude: snapshotLongitude,
         status: evidence.status,
-        createdAt: evidence.createdAt
+        createdAt: evidence.createdAt,
+        timestamp: evidence.createdAt
       });
     }
 
+    // 6. Return response with location snapshot
     return res.status(201).json({
       success: true,
       message: 'Evidence uploaded successfully',
@@ -244,6 +301,10 @@ export const uploadEvidenceFromDevice = async (req, res) => {
         deviceId: targetDeviceId,
         voltage: parsedVoltage,
         detectionType: evidence.detectionType,
+        location: snapshotLocationName,
+        locationName: snapshotLocationName,
+        latitude: snapshotLatitude,
+        longitude: snapshotLongitude,
         status: evidence.status,
         timestamp: evidence.createdAt
       }
@@ -258,4 +319,3 @@ export const uploadEvidenceFromDevice = async (req, res) => {
     });
   }
 };
-

@@ -12,6 +12,7 @@ import {
   Menu, 
   LogOut, 
   ChevronLeft, 
+  MapPin,
   ChevronRight, 
   Search, 
   Bell 
@@ -20,6 +21,7 @@ import {
 const navItems = [
   { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/admin/monitoring', icon: Radio, label: 'Live Monitoring' },
+  { path: '/admin/location', icon: MapPin, label: 'Sensor Location' },
   { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts / Events' },
   { path: '/admin/evidence', icon: Camera, label: 'Evidence' },
 ];
@@ -233,9 +235,6 @@ const AdminLayout = () => {
           <Outlet context={{ isMobile, setIsSidebarOpen }} />
         </div>
       </main>
-
-      {/* Global Horizontal Divider for Unified Header Look */}
-      <div className="absolute top-24 left-0 w-full h-px bg-[#DCEEFF] z-40 pointer-events-none" />
     </div>
   );
 };

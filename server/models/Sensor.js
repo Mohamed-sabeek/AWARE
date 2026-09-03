@@ -8,15 +8,21 @@ const sensorSchema = new mongoose.Schema({
   },
   latitude: {
     type: Number,
-    required: true
+    required: true,
+    default: 0
   },
   longitude: {
     type: Number,
-    required: true
+    required: true,
+    default: 0
   },
   location: {
     type: String,
     required: true,
+    default: 'ESP32 Station'
+  },
+  locationName: {
+    type: String,
     default: 'ESP32 Station'
   },
   voltage: {
