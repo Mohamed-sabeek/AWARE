@@ -15,7 +15,8 @@ import {
   MapPin,
   ChevronRight, 
   Search, 
-  Bell 
+  Bell,
+  Users
 } from 'lucide-react';
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { path: '/admin/location', icon: MapPin, label: 'Sensor Location' },
   { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts / Events' },
   { path: '/admin/evidence', icon: Camera, label: 'Evidence' },
+  { path: '/admin/users', icon: Users, label: 'Authority Officers' },
 ];
 
 const AdminLayout = () => {

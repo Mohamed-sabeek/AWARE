@@ -7,7 +7,6 @@ import AdminLayout from './layouts/AdminLayout';
 import AuthorityLayout from './layouts/AuthorityLayout';
 import Home from './pages/Home';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import LiveMonitoring from './pages/LiveMonitoring';
 import EvidenceManagement from './pages/EvidenceManagement';
@@ -18,6 +17,7 @@ import AdminAnalytics from './pages/AdminAnalytics';
 import SensorLocation from './pages/SensorLocation';
 import AuthorityDashboard from './pages/AuthorityDashboard';
 import IncidentResponse from './pages/IncidentResponse';
+import AdminAuthorityUsers from './pages/AdminAuthorityUsers';
 
 function App() {
   return (
@@ -29,7 +29,7 @@ function App() {
             <Route index element={<Home />} />
           </Route>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<Navigate to="/login" replace />} />
           
           {/* Protected Admin Routes */}
           <Route 
@@ -45,6 +45,7 @@ function App() {
             <Route path="location" element={<SensorLocation />} />
             <Route path="alerts" element={<ActivityLogs />} />
             <Route path="evidence" element={<EvidenceManagement />} />
+            <Route path="users" element={<AdminAuthorityUsers />} />
             <Route path="logs" element={<ActivityLogs />} />
             <Route path="map" element={<GISMap />} />
             <Route path="satellite" element={<SatelliteMonitoring />} />

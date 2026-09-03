@@ -281,13 +281,10 @@ const Login = () => {
           <LoginForm onLogin={handleLogin} isLoading={isLoading} error={error} />
 
           {/* Footer Links */}
-          <div className="mt-8 pt-5 border-t border-slate-100 flex flex-row items-center justify-between gap-4 whitespace-nowrap text-[14px]">
-            <p className="text-slate-600 font-sans">
-              Don't have an account? <Link to="/register" className="font-[600] text-blue-600 hover:text-blue-700 transition-colors ml-1">Create Account</Link>
-            </p>
+          <div className="mt-8 pt-5 border-t border-slate-100 flex flex-row items-center justify-end gap-4 whitespace-nowrap text-[14px]">
             <Link 
               to="/" 
-              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 font-sans font-[600] transition-colors"
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 font-sans font-[600] transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Home
