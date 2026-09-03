@@ -202,6 +202,10 @@ const Login = () => {
         navigate('/admin/dashboard', { replace: true });
       } else if (user.role === 'authority') {
         navigate('/authority/dashboard', { replace: true });
+      } else if (user.role === 'fire_officer') {
+        navigate('/fire/dashboard', { replace: true });
+      } else if (user.role === 'pollution_officer') {
+        navigate('/pollution/dashboard', { replace: true });
       }
     }
   }, [user, loading, navigate]);
@@ -218,8 +222,12 @@ const Login = () => {
         navigate('/admin/dashboard', { replace: true });
       } else if (loggedUser.role === 'authority') {
         navigate('/authority/dashboard', { replace: true });
+      } else if (loggedUser.role === 'fire_officer') {
+        navigate('/fire/dashboard', { replace: true });
+      } else if (loggedUser.role === 'pollution_officer') {
+        navigate('/pollution/dashboard', { replace: true });
       } else {
-        setError('This portal is reserved for System Administrators and Environmental Authorities.');
+        setError('This portal is reserved for System Administrators, Environmental Authorities, and Response Officers.');
         setIsLoading(false);
       }
     } catch (err) {

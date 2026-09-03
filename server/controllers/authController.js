@@ -14,7 +14,7 @@ export const loginUser = async (req, res) => {
     }
 
     // Check for user
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -69,12 +69,12 @@ export const getMe = async (req, res) => {
   }
 };
 
-// @desc    Admin creates Authority user account
-// @route   POST /api/auth/create-authority
+// @desc    Admin creates Officer account (Authority, Fire Officer, Pollution Officer)
+// @route   POST /api/auth/create-officer (or /api/auth/create-authority)
 // @access  Private/Admin
-export const createAuthorityUser = async (req, res) => {
+export const createOfficerUser = async (req, res) => {
   try {
-    const { fullName, email, password, phoneNumber } = req.body;
+    const { fullName, email, password, phoneNumber, role } = req.body;
 
     if (!fullName || !email || !password) {
       return res.status(400).json({ 
@@ -90,7 +90,10 @@ export const createAuthorityUser = async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const validRoles = ['authority', 'fire_officer', 'pollution_officer'];
+    const assignedRole = role && validRoles.includes(role) ? role : 'authority';
+
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
     if (existingUser) {
       return res.status(400).json({ 
         success: false, 
@@ -98,56 +101,62 @@ export const createAuthorityUser = async (req, res) => {
       });
     }
 
-    // Explicitly enforce role as 'authority' on the backend (do not trust client)
-    const authorityUser = await User.create({
+    const officerUser = await User.create({
       fullName: fullName.trim(),
       email: email.toLowerCase().trim(),
       password,
       phoneNumber: phoneNumber ? phoneNumber.trim() : 'N/A',
-      role: 'authority',
+      role: assignedRole,
       isActive: true
     });
 
     res.status(201).json({
       success: true,
-      message: 'Authority account created successfully.',
+      message: `${assignedRole.toUpperCase().replace('_', ' ')} account created successfully.`,
       user: {
-        _id: authorityUser._id,
-        fullName: authorityUser.fullName,
-        email: authorityUser.email,
-        phoneNumber: authorityUser.phoneNumber,
-        role: authorityUser.role,
-        createdAt: authorityUser.createdAt
+        _id: officerUser._id,
+        fullName: officerUser.fullName,
+        email: officerUser.email,
+        phoneNumber: officerUser.phoneNumber,
+        role: officerUser.role,
+        createdAt: officerUser.createdAt
       }
     });
   } catch (error) {
-    console.error(`CreateAuthority Error: ${error.message}`);
+    console.error(`CreateOfficer Error: ${error.message}`);
     res.status(500).json({ 
       success: false, 
-      message: error.message || 'Server error creating authority user' 
+      message: error.message || 'Server error creating officer account' 
     });
   }
 };
 
-// @desc    Admin gets list of Authority users
-// @route   GET /api/auth/authority-users
-// @access  Private/Admin
-export const getAuthorityUsers = async (req, res) => {
+// @desc    Get list of Officers (by role or all)
+// @route   GET /api/auth/officers
+// @access  Private/Authority/Admin
+export const getOfficers = async (req, res) => {
   try {
-    const users = await User.find({ role: 'authority' })
+    const { role } = req.query;
+    let query = { role: { $in: ['authority', 'fire_officer', 'pollution_officer'] } };
+
+    if (role && ['authority', 'fire_officer', 'pollution_officer'].includes(role)) {
+      query.role = role;
+    }
+
+    const officers = await User.find(query)
       .select('-password')
-      .sort({ createdAt: -1 });
+      .sort({ role: 1, fullName: 1 });
 
     res.status(200).json({
       success: true,
-      count: users.length,
-      users
+      count: officers.length,
+      users: officers
     });
   } catch (error) {
-    console.error(`GetAuthorityUsers Error: ${error.message}`);
+    console.error(`GetOfficers Error: ${error.message}`);
     res.status(500).json({ 
       success: false, 
-      message: 'Server error retrieving authority users' 
+      message: 'Server error retrieving officers' 
     });
   }
 };

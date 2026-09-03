@@ -76,9 +76,75 @@ const evidenceSchema = new mongoose.Schema({
   },
   incidentStatus: {
     type: String,
-    enum: ['NEW', 'ACKNOWLEDGED', 'UNDER INVESTIGATION', 'RESOLVED'],
+    enum: ['NEW', 'ASSIGNED', 'ACKNOWLEDGED', 'UNDER INVESTIGATION', 'RESOLVED'],
     default: 'NEW'
   },
+
+  // Incident Assignment Fields
+  assignedOfficerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  assignedOfficerName: {
+    type: String,
+    default: null
+  },
+  assignedOfficerRole: {
+    type: String,
+    enum: ['fire_officer', 'pollution_officer', null],
+    default: null
+  },
+  assignedDepartment: {
+    type: String,
+    enum: ['FIRE_OFFICER', 'POLLUTION_OFFICER', null],
+    default: null
+  },
+  assignedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  assignedByName: {
+    type: String,
+    default: null
+  },
+  assignedAt: {
+    type: Date,
+    default: null
+  },
+  assignmentNotes: {
+    type: String,
+    default: ''
+  },
+
+  // Officer Investigation & Resolution Fields
+  investigationNotes: {
+    type: String,
+    default: ''
+  },
+  resolutionNotes: {
+    type: String,
+    default: ''
+  },
+  resolutionImageUrl: {
+    type: String,
+    default: ''
+  },
+  resolvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  resolvedByName: {
+    type: String,
+    default: null
+  },
+  resolvedAt: {
+    type: Date,
+    default: null
+  },
+
   reportStatus: {
     type: String,
     enum: ['Not Generated', 'Generated', 'Sent'],

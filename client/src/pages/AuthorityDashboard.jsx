@@ -538,6 +538,16 @@ const AuthorityDashboard = () => {
                               <span className="truncate">{incident.locationName || incident.location || 'Location Not Configured'}</span>
                             </p>
 
+                            {incident.assignedDepartment && (
+                              <p className="text-[11.5px] font-bold text-slate-700 mt-1 flex items-center gap-1">
+                                <span>Assigned:</span>
+                                <span className={incident.assignedDepartment === 'FIRE_OFFICER' ? 'text-red-600' : 'text-emerald-600'}>
+                                  {incident.assignedDepartment === 'FIRE_OFFICER' ? '🔥 Fire Officer' : '🌫️ Pollution Officer'}
+                                  {incident.assignedOfficerName ? ` — ${incident.assignedOfficerName}` : ''}
+                                </span>
+                              </p>
+                            )}
+
                             <div className="flex items-center gap-3 text-[11.5px] text-slate-400 mt-1 font-mono">
                               <span className="font-bold text-red-500">
                                 {incident.voltage !== undefined ? `${Number(incident.voltage).toFixed(3)} V` : 'N/A'}

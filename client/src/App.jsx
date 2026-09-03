@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import RootLayout from './layouts/RootLayout';
 import AdminLayout from './layouts/AdminLayout';
 import AuthorityLayout from './layouts/AuthorityLayout';
+import FireOfficerLayout from './layouts/FireOfficerLayout';
+import PollutionOfficerLayout from './layouts/PollutionOfficerLayout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -18,6 +20,7 @@ import SensorLocation from './pages/SensorLocation';
 import AuthorityDashboard from './pages/AuthorityDashboard';
 import IncidentResponse from './pages/IncidentResponse';
 import AdminAuthorityUsers from './pages/AdminAuthorityUsers';
+import OfficerDashboard from './pages/OfficerDashboard';
 
 function App() {
   return (
@@ -66,6 +69,36 @@ function App() {
             <Route path="incidents" element={<IncidentResponse />} />
             <Route path="incidents/:incidentId" element={<IncidentResponse />} />
             <Route path="evidence" element={<EvidenceManagement />} />
+          </Route>
+
+          {/* Protected Fire Officer Routes */}
+          <Route 
+            path="/fire" 
+            element={
+              <ProtectedRoute allowedRoles={['fire_officer', 'admin']}>
+                <FireOfficerLayout />
+              </ProtectedRoute>
+            } 
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<OfficerDashboard />} />
+            <Route path="incidents" element={<IncidentResponse />} />
+            <Route path="incidents/:incidentId" element={<IncidentResponse />} />
+          </Route>
+
+          {/* Protected Pollution Officer Routes */}
+          <Route 
+            path="/pollution" 
+            element={
+              <ProtectedRoute allowedRoles={['pollution_officer', 'admin']}>
+                <PollutionOfficerLayout />
+              </ProtectedRoute>
+            } 
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<OfficerDashboard />} />
+            <Route path="incidents" element={<IncidentResponse />} />
+            <Route path="incidents/:incidentId" element={<IncidentResponse />} />
           </Route>
         </Routes>
       </BrowserRouter>

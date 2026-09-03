@@ -4,11 +4,11 @@ import {
   getLatestActivityLogs,
   getActivityLogStats
 } from '../controllers/activityLogController.js';
-import { protect, authorityOrAdmin } from '../middleware/authMiddleware.js';
+import { protect, anyOfficerOrAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.use(protect, authorityOrAdmin);
+router.use(protect, anyOfficerOrAdmin);
 
 router.get('/', getActivityLogs);
 router.get('/latest', getLatestActivityLogs);

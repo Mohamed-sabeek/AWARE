@@ -39,10 +39,34 @@ export const admin = (req, res, next) => {
   }
 };
 
+export const authority = (req, res, next) => {
+  if (req.user && (req.user.role === 'authority' || req.user.role === 'admin')) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'Not authorized as an authority officer' });
+  }
+};
+
 export const authorityOrAdmin = (req, res, next) => {
   if (req.user && (req.user.role === 'admin' || req.user.role === 'authority')) {
     next();
   } else {
-    res.status(403).json({ success: false, message: 'Not authorized for incident response' });
+    res.status(403).json({ success: false, message: 'Not authorized for incident management' });
+  }
+};
+
+export const fieldOfficer = (req, res, next) => {
+  if (req.user && (req.user.role === 'fire_officer' || req.user.role === 'pollution_officer' || req.user.role === 'admin')) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'Not authorized as a field response officer' });
+  }
+};
+
+export const anyOfficerOrAdmin = (req, res, next) => {
+  if (req.user && ['admin', 'authority', 'fire_officer', 'pollution_officer'].includes(req.user.role)) {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: 'Not authorized for incident records' });
   }
 };
