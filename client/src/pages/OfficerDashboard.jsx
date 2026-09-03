@@ -26,6 +26,7 @@ import api from '../services/api';
 import getSocket from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import { getEvidenceImageUrl } from '../utils/imageUrl';
+import NotificationDropdown from '../components/NotificationDropdown';
 
 // Custom Map Marker Pin for Field Incidents
 const createFieldPin = (label, status, isFire) => {
@@ -225,6 +226,7 @@ const OfficerDashboard = () => {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
+            <NotificationDropdown />
           </div>
         </div>
       </div>

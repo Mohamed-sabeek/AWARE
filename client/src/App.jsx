@@ -21,13 +21,15 @@ import AuthorityDashboard from './pages/AuthorityDashboard';
 import IncidentResponse from './pages/IncidentResponse';
 import AdminAuthorityUsers from './pages/AdminAuthorityUsers';
 import OfficerDashboard from './pages/OfficerDashboard';
+import GlobalNotificationToast from './components/GlobalNotificationToast';
 
 function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
         <BrowserRouter>
-        <Routes>
+          <GlobalNotificationToast />
+          <Routes>
           <Route path="/" element={<RootLayout />}>
             <Route index element={<Home />} />
           </Route>

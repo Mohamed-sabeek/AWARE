@@ -28,7 +28,7 @@ import PremiumSummaryCard from '../components/ui/PremiumSummaryCard';
 // =========================================================================
 // CAMERA STREAM CONFIGURATION (ESP32-CAM MJPEG STREAM)
 // =========================================================================
-const CAMERA_STREAM_URL = "http://192.168.1.19:81/stream";
+const CAMERA_STREAM_URL = "http://10.190.0.186:81/stream";
 
 // Premium Glass Card Wrapper
 const GlassCard = ({ 
@@ -388,7 +388,7 @@ const LiveMonitoring = () => {
                     <span>Last Sync: {lastSyncTime}</span>
                   </div>
                   <div className="px-3.5 py-2 bg-[#0F172A]/80 backdrop-blur-xl border border-white/10 rounded-full text-[11px] font-mono text-white/70">
-                    RES: <span className="text-white font-bold">1600x1200 UXGA</span>
+                    RES: <span className="text-white font-bold">320x240 QVGA</span>
                   </div>
                 </div>
               </div>

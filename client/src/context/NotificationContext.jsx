@@ -26,7 +26,7 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [notifications]);
 
-  // Socket.io Realtime Listener
+  // Socket.io Realtime Listener for All Dashboards
   useEffect(() => {
     const socket = getSocket();
 
@@ -35,7 +35,7 @@ export const NotificationProvider = ({ children }) => {
       const newNotif = {
         id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
         type: 'breach',
-        title: 'New Environmental Breach Detected',
+        title: 'New Environmental Breach Alert',
         message: `${data.evidenceId || 'Evidence'} • ${data.sensorId || 'Node'} at ${data.locationName || data.location || 'Station'} (${Number(data.voltage || 0).toFixed(3)} V)`,
         evidenceId: data.evidenceId,
         timestamp: new Date().toISOString(),
@@ -47,26 +47,70 @@ export const NotificationProvider = ({ children }) => {
       setToastAlert(newNotif);
     };
 
-    // 2. Incident Status Transition
-    const handleStatusUpdated = (data) => {
-      const isResolved = data.incidentStatus === 'RESOLVED';
+    // 2. Incident Assigned to an Officer / Category
+    const handleIncidentAssigned = (data) => {
+      const deptName = data.assignedDepartment === 'FIRE_OFFICER' || data.assignedOfficerRole === 'fire_officer' 
+        ? 'Fire Officer' 
+        : 'Pollution Officer';
+        
       const newNotif = {
         id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        type: 'status',
-        title: isResolved ? 'Incident Resolved' : 'Incident Status Updated',
-        message: `${data.evidenceId || 'Incident'} updated to ${data.incidentStatus} by ${data.updatedBy || 'Authority'}`,
+        type: 'assigned',
+        title: 'Incident Assigned to Field Officer',
+        message: `${data.evidenceId || 'Incident'} assigned to ${deptName} (${data.assignedOfficerName || 'Officer'}) by ${data.assignedBy || 'Authority'}`,
         evidenceId: data.evidenceId,
-        incidentStatus: data.incidentStatus,
+        assignedDepartment: data.assignedDepartment,
+        incidentStatus: 'ASSIGNED',
         timestamp: new Date().toISOString(),
         read: false,
-        severity: isResolved ? 'success' : 'info'
+        severity: 'info'
       };
 
       setNotifications(prev => [newNotif, ...prev].slice(0, 30));
       setToastAlert(newNotif);
     };
 
-    // 3. Sensor Threshold Alert
+    // 3. Incident Status Transition
+    const handleStatusUpdated = (data) => {
+      const isResolved = data.incidentStatus === 'RESOLVED';
+      const isUnderInvestigation = data.incidentStatus === 'UNDER INVESTIGATION';
+      const isAcknowledged = data.incidentStatus === 'ACKNOWLEDGED';
+
+      let title = 'Incident Status Updated';
+      let message = `${data.evidenceId || 'Incident'} updated to ${data.incidentStatus}`;
+      let severity = 'info';
+
+      if (isResolved) {
+        title = 'Incident Resolved';
+        message = `${data.evidenceId || 'Incident'} has been marked RESOLVED by ${data.resolvedByName || data.updatedBy || 'Officer'}`;
+        severity = 'success';
+      } else if (isUnderInvestigation) {
+        title = 'Investigation In Progress';
+        message = `${data.evidenceId || 'Incident'} field investigation started by ${data.updatedBy || 'Officer'}`;
+        severity = 'warning';
+      } else if (isAcknowledged) {
+        title = 'Incident Acknowledged';
+        message = `${data.evidenceId || 'Incident'} dispatch acknowledged by ${data.updatedBy || 'Officer'}`;
+        severity = 'info';
+      }
+
+      const newNotif = {
+        id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        type: 'status',
+        title,
+        message,
+        evidenceId: data.evidenceId,
+        incidentStatus: data.incidentStatus,
+        timestamp: new Date().toISOString(),
+        read: false,
+        severity
+      };
+
+      setNotifications(prev => [newNotif, ...prev].slice(0, 30));
+      setToastAlert(newNotif);
+    };
+
+    // 4. Sensor Threshold Alert
     const handleSensorAlert = (data) => {
       const newNotif = {
         id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -79,14 +123,17 @@ export const NotificationProvider = ({ children }) => {
       };
 
       setNotifications(prev => [newNotif, ...prev].slice(0, 30));
+      setToastAlert(newNotif);
     };
 
     socket.on('evidence-captured', handleEvidenceCaptured);
+    socket.on('incident-assigned', handleIncidentAssigned);
     socket.on('incident-status-updated', handleStatusUpdated);
     socket.on('sensor-alert', handleSensorAlert);
 
     return () => {
       socket.off('evidence-captured', handleEvidenceCaptured);
+      socket.off('incident-assigned', handleIncidentAssigned);
       socket.off('incident-status-updated', handleStatusUpdated);
       socket.off('sensor-alert', handleSensorAlert);
     };

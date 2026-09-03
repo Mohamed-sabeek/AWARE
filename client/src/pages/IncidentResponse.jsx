@@ -37,6 +37,7 @@ import getSocket from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import { getEvidenceImageUrl } from '../utils/imageUrl';
 import { generateEvidencePDF, downloadEvidenceImage } from '../utils/evidenceActions';
+import NotificationDropdown from '../components/NotificationDropdown';
 
 // Custom Incident Pin Marker
 const createLocationPin = (label, status, dept) => {
@@ -455,6 +456,7 @@ const IncidentResponse = () => {
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 <span>Refresh Incidents</span>
               </button>
+              <NotificationDropdown />
             </div>
           </div>
         </div>
@@ -761,6 +763,7 @@ const IncidentResponse = () => {
             >
               <RefreshCw className="w-4 h-4" />
             </button>
+            <NotificationDropdown />
           </div>
 
         </div>
