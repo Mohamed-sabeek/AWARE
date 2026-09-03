@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import getSocket from '../services/socket';
 import PageHeader from '../components/PageHeader';
 import EvidenceSummaryCards from '../components/evidence/EvidenceSummaryCards';
 import EvidenceFilters from '../components/evidence/EvidenceFilters';
@@ -13,7 +14,6 @@ const EvidenceManagement = () => {
   const [evidenceData, setEvidenceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedEvidence, setSelectedEvidence] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -33,6 +33,42 @@ const EvidenceManagement = () => {
   useEffect(() => {
     fetchEvidence();
   }, [fetchEvidence]);
+
+  // Realtime Socket.io status update listener
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleStatusUpdated = (data) => {
+      setEvidenceData(prev => prev.map(item => {
+        if (item.evidenceId === data.evidenceId || item._id === data._id) {
+          return { ...item, incidentStatus: data.incidentStatus };
+        }
+        return item;
+      }));
+
+      setSelectedEvidence(prev => {
+        if (prev && (prev.evidenceId === data.evidenceId || prev._id === data._id)) {
+          return { ...prev, incidentStatus: data.incidentStatus };
+        }
+        return prev;
+      });
+    };
+
+    const handleEvidenceCaptured = (data) => {
+      setEvidenceData(prev => {
+        if (prev.some(e => e.evidenceId === data.evidenceId)) return prev;
+        return [data, ...prev];
+      });
+    };
+
+    socket.on('incident-status-updated', handleStatusUpdated);
+    socket.on('evidence-captured', handleEvidenceCaptured);
+
+    return () => {
+      socket.off('incident-status-updated', handleStatusUpdated);
+      socket.off('evidence-captured', handleEvidenceCaptured);
+    };
+  }, []);
 
   const handleDelete = useCallback(async (id) => {
     try {
@@ -63,10 +99,11 @@ const EvidenceManagement = () => {
     const idMatch = (item.evidenceId || '').toLowerCase().includes(query);
     const locMatch = (item.locationName || item.location || '').toLowerCase().includes(query);
     const matchesSearch = !query || idMatch || locMatch;
-    const matchesType = filterType === 'All' || item.detectionType === filterType;
-    const matchesStatus = filterStatus === 'All' || item.status === filterStatus;
     
-    return matchesSearch && matchesType && matchesStatus;
+    const curStatus = item.incidentStatus || (item.status === 'Verified' ? 'NEW' : (item.status || 'NEW'));
+    const matchesStatus = filterStatus === 'All' || curStatus === filterStatus;
+    
+    return matchesSearch && matchesStatus;
   });
 
   return (
@@ -97,13 +134,10 @@ const EvidenceManagement = () => {
         <EvidenceSummaryCards data={evidenceData} />
         
         <EvidenceFilters 
-          filterType={filterType}
-          setFilterType={setFilterType}
           filterStatus={filterStatus}
           setFilterStatus={setFilterStatus}
           onReset={() => {
             setSearchQuery('');
-            setFilterType('All');
             setFilterStatus('All');
           }}
         />

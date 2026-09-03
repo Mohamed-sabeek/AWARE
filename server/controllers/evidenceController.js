@@ -4,32 +4,87 @@ import Sensor from '../models/Sensor.js';
 import cloudinary from '../config/cloudinary.js';
 import ActivityLog from '../models/ActivityLog.js';
 
-// @desc    Get all evidence
+// @desc    Get evidence records (supports limit and filtering)
 // @route   GET /api/evidence
-// @access  Private/Admin
+// @access  Private/Admin/Authority
 export const getEvidences = async (req, res) => {
   try {
-    const evidence = await Evidence.find({}).sort({ createdAt: -1 });
+    const { limit, status, incidentStatus } = req.query;
+    const filter = {};
+
+    if (incidentStatus && incidentStatus !== 'All') {
+      filter.incidentStatus = incidentStatus;
+    } else if (status && status !== 'All') {
+      filter.status = status;
+    }
+
+    let query = Evidence.find(filter).sort({ createdAt: -1 });
+
+    if (limit) {
+      const parsedLimit = parseInt(limit, 10);
+      if (!isNaN(parsedLimit) && parsedLimit > 0) {
+        query = query.limit(parsedLimit);
+      }
+    }
+
+    const evidence = await query.exec();
     res.json(evidence);
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching evidence:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
 
-// @desc    Get evidence by ID
+// @desc    Get system-wide evidence and incident statistics
+// @route   GET /api/evidence/stats
+// @access  Private/Admin/Authority
+export const getEvidenceStats = async (req, res) => {
+  try {
+    const totalCount = await Evidence.countDocuments({});
+    const activeCount = await Evidence.countDocuments({
+      incidentStatus: { $in: ['NEW', 'ACKNOWLEDGED', 'UNDER INVESTIGATION', null] }
+    });
+    const resolvedCount = await Evidence.countDocuments({
+      incidentStatus: 'RESOLVED'
+    });
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const newTodayCount = await Evidence.countDocuments({
+      createdAt: { $gte: oneDayAgo }
+    });
+
+    res.json({
+      totalCount,
+      activeCount,
+      resolvedCount,
+      newTodayCount
+    });
+  } catch (error) {
+    console.error('Error fetching evidence stats:', error);
+    res.status(500).json({ message: 'Server Error calculating stats' });
+  }
+};
+
+// @desc    Get evidence by ID or evidenceId
 // @route   GET /api/evidence/:id
-// @access  Private/Admin
+// @access  Private/Admin/Authority
 export const getEvidenceById = async (req, res) => {
   try {
-    const evidence = await Evidence.findById(req.params.id);
+    let evidence = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      evidence = await Evidence.findById(req.params.id);
+    }
+    if (!evidence) {
+      evidence = await Evidence.findOne({ evidenceId: req.params.id });
+    }
+
     if (evidence) {
       res.json(evidence);
     } else {
       res.status(404).json({ message: 'Evidence not found' });
     }
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching evidence by id:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
@@ -286,6 +341,7 @@ export const uploadEvidenceFromDevice = async (req, res) => {
         latitude: snapshotLatitude,
         longitude: snapshotLongitude,
         status: evidence.status,
+        incidentStatus: evidence.incidentStatus || 'NEW',
         createdAt: evidence.createdAt,
         timestamp: evidence.createdAt
       });
@@ -306,6 +362,7 @@ export const uploadEvidenceFromDevice = async (req, res) => {
         latitude: snapshotLatitude,
         longitude: snapshotLongitude,
         status: evidence.status,
+        incidentStatus: evidence.incidentStatus || 'NEW',
         timestamp: evidence.createdAt
       }
     });
@@ -317,5 +374,85 @@ export const uploadEvidenceFromDevice = async (req, res) => {
       message: 'Server Error while uploading evidence',
       error: error.message
     });
+  }
+};
+
+// @desc    Update incident response status (NEW -> ACKNOWLEDGED -> UNDER INVESTIGATION -> RESOLVED)
+// @route   PUT /api/evidence/:id/incident-status
+// @access  Private/Authority/Admin
+export const updateIncidentStatus = async (req, res) => {
+  try {
+    const { nextStatus, notes } = req.body;
+    let evidence = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      evidence = await Evidence.findById(req.params.id);
+    }
+
+    if (!evidence) {
+      evidence = await Evidence.findOne({ evidenceId: req.params.id });
+    }
+
+    if (!evidence) {
+      return res.status(404).json({ success: false, message: 'Incident record not found' });
+    }
+
+    const currentStatus = evidence.incidentStatus || 'NEW';
+    const validTransitions = {
+      'NEW': ['ACKNOWLEDGED'],
+      'ACKNOWLEDGED': ['UNDER INVESTIGATION'],
+      'UNDER INVESTIGATION': ['RESOLVED'],
+      'RESOLVED': []
+    };
+
+    const allowedNext = validTransitions[currentStatus] || [];
+    if (!allowedNext.includes(nextStatus)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Invalid status transition from '${currentStatus}' to '${nextStatus}'. Allowed next: ${allowedNext.join(', ') || 'None (Already Resolved)'}`
+      });
+    }
+
+    evidence.incidentStatus = nextStatus;
+    if (notes) evidence.notes = notes;
+    const updated = await evidence.save();
+
+    // Log in ActivityLog
+    const authorityName = req.user?.fullName || 'Authority Officer';
+    await ActivityLog.create({
+      deviceName: evidence.locationName || evidence.location || evidence.sensorId,
+      deviceId: evidence.sensorId,
+      category: 'Alert',
+      severity: nextStatus === 'RESOLVED' ? 'Success' : (nextStatus === 'UNDER INVESTIGATION' ? 'Warning' : 'Info'),
+      description: `Authority (${authorityName}) updated incident ${evidence.evidenceId} status: ${currentStatus} -> ${nextStatus}`,
+      location: evidence.locationName || evidence.location || 'System Wide',
+      metadata: {
+        evidenceId: evidence.evidenceId,
+        previousStatus: currentStatus,
+        newStatus: nextStatus,
+        updatedBy: authorityName
+      }
+    });
+
+    // Broadcast Socket.io event for realtime updates across authority dashboards
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('incident-status-updated', {
+        evidenceId: evidence.evidenceId,
+        _id: evidence._id,
+        incidentStatus: nextStatus,
+        previousStatus: currentStatus,
+        updatedBy: authorityName,
+        updatedAt: new Date()
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Incident status updated to ${nextStatus}`,
+      data: updated
+    });
+  } catch (error) {
+    console.error('Error updating incident status:', error);
+    res.status(500).json({ success: false, message: 'Server error updating incident status', error: error.message });
   }
 };

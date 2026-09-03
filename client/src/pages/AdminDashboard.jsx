@@ -229,9 +229,30 @@ const AdminDashboard = () => {
       setEvidenceCount(prev => prev + 1);
     };
 
+    // Realtime incident status transition
+    const onIncidentStatusUpdated = (data) => {
+      if (!data) return;
+      setLatestEvidence(prev => {
+        if (prev && (prev.evidenceId === data.evidenceId || prev._id === data._id)) {
+          return { ...prev, incidentStatus: data.incidentStatus };
+        }
+        return prev;
+      });
+
+      if (data.incidentStatus === 'RESOLVED') {
+        setLatestAlert(prev => {
+          if (prev && (prev.evidenceId === data.evidenceId || prev.metadata?.evidenceId === data.evidenceId)) {
+            return { ...prev, status: 'Resolved' };
+          }
+          return prev;
+        });
+      }
+    };
+
     socket.on('sensor-reading', onSensorReading);
     socket.on('sensor-alert', onSensorAlert);
     socket.on('evidence-captured', onEvidenceCaptured);
+    socket.on('incident-status-updated', onIncidentStatusUpdated);
 
     return () => {
       socket.off('connect', onConnect);
@@ -240,6 +261,7 @@ const AdminDashboard = () => {
       socket.off('sensor-reading', onSensorReading);
       socket.off('sensor-alert', onSensorAlert);
       socket.off('evidence-captured', onEvidenceCaptured);
+      socket.off('incident-status-updated', onIncidentStatusUpdated);
     };
   }, [TARGET_DEVICE_ID, liveSensor?.threshold]);
 

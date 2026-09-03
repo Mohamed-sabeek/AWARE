@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RootLayout from './layouts/RootLayout';
 import AdminLayout from './layouts/AdminLayout';
+import AuthorityLayout from './layouts/AuthorityLayout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -14,11 +16,14 @@ import GISMap from './pages/GISMap';
 import SatelliteMonitoring from './pages/SatelliteMonitoring';
 import AdminAnalytics from './pages/AdminAnalytics';
 import SensorLocation from './pages/SensorLocation';
+import AuthorityDashboard from './pages/AuthorityDashboard';
+import IncidentResponse from './pages/IncidentResponse';
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <NotificationProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<RootLayout />}>
             <Route index element={<Home />} />
@@ -45,8 +50,25 @@ function App() {
             <Route path="satellite" element={<SatelliteMonitoring />} />
             <Route path="analytics" element={<AdminAnalytics />} />
           </Route>
+
+          {/* Protected Authority Routes */}
+          <Route 
+            path="/authority" 
+            element={
+              <ProtectedRoute allowedRoles={['authority', 'admin']}>
+                <AuthorityLayout />
+              </ProtectedRoute>
+            } 
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AuthorityDashboard />} />
+            <Route path="incidents" element={<IncidentResponse />} />
+            <Route path="incidents/:incidentId" element={<IncidentResponse />} />
+            <Route path="evidence" element={<EvidenceManagement />} />
+          </Route>
         </Routes>
       </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

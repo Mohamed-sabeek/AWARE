@@ -74,6 +74,11 @@ const evidenceSchema = new mongoose.Schema({
     enum: ['Pending', 'Verified', 'Rejected', 'Report Generated'],
     default: 'Verified'
   },
+  incidentStatus: {
+    type: String,
+    enum: ['NEW', 'ACKNOWLEDGED', 'UNDER INVESTIGATION', 'RESOLVED'],
+    default: 'NEW'
+  },
   reportStatus: {
     type: String,
     enum: ['Not Generated', 'Generated', 'Sent'],

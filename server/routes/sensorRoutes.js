@@ -9,7 +9,7 @@ import {
   recordSensorReading,
   getSensorReadings
 } from '../controllers/sensorController.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, admin, authorityOrAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ router.put('/location', protect, admin, updateSensorLocation);
 router.put('/:id/location', protect, admin, updateSensorLocation);
 
 router.route('/')
-  .get(protect, admin, getSensors)
+  .get(protect, authorityOrAdmin, getSensors)
   .post(protect, admin, createSensor);
 
 router.route('/:id')

@@ -9,12 +9,17 @@ const EvidenceCard = React.memo(({ evidence, onView, onDelete }) => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const incidentStatus = evidence.incidentStatus || (evidence.status === 'Verified' ? 'NEW' : (evidence.status || 'RESOLVED'));
+
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Verified': return 'text-green-600 bg-green-50 border-green-200';
+      case 'RESOLVED': return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      case 'UNDER INVESTIGATION': return 'text-blue-700 bg-blue-50 border-blue-200';
+      case 'ACKNOWLEDGED': return 'text-amber-700 bg-amber-50 border-amber-200';
+      case 'NEW': return 'text-red-700 bg-red-50 border-red-200 animate-pulse';
+      case 'Verified': return 'text-emerald-700 bg-emerald-50 border-emerald-200';
       case 'Pending': return 'text-amber-600 bg-amber-50 border-amber-200';
       case 'Rejected': return 'text-red-600 bg-red-50 border-red-200';
-      case 'Report Generated': return 'text-blue-600 bg-blue-50 border-blue-200';
       default: return 'text-slate-600 bg-slate-50 border-slate-200';
     }
   };
@@ -109,8 +114,8 @@ const EvidenceCard = React.memo(({ evidence, onView, onDelete }) => {
               <span className="truncate">{evidence.locationName || evidence.location || 'Location not configured'}</span>
             </p>
           </div>
-          <div className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0 ${getStatusColor(evidence.status)}`}>
-            {evidence.status}
+          <div className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap shrink-0 ${getStatusColor(incidentStatus)}`}>
+            {incidentStatus}
           </div>
         </div>
 
