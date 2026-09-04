@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import getSocket from '../services/socket';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext();
 
 export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
+  const { user } = useAuth();
+
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem('aware_notifications');
@@ -17,17 +20,29 @@ export const NotificationProvider = ({ children }) => {
 
   const [toastAlert, setToastAlert] = useState(null);
 
-  // Save notifications to localStorage
+  // Clear toast alert when unauthenticated / logged out
   useEffect(() => {
+    if (!user) {
+      setToastAlert(null);
+    }
+  }, [user]);
+
+  // Save notifications to localStorage only when user is logged in
+  useEffect(() => {
+    if (!user) return;
     try {
       localStorage.setItem('aware_notifications', JSON.stringify(notifications.slice(0, 30)));
     } catch (err) {
       console.error('Error storing notifications:', err);
     }
-  }, [notifications]);
+  }, [notifications, user]);
 
-  // Socket.io Realtime Listener for All Dashboards
+  // Socket.io Realtime Listener - Active ONLY when authenticated
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+
     const socket = getSocket();
 
     // 1. New Evidence / Incident Captured
@@ -38,6 +53,7 @@ export const NotificationProvider = ({ children }) => {
         title: 'New Environmental Breach Alert',
         message: `${data.evidenceId || 'Evidence'} • ${data.sensorId || 'Node'} at ${data.locationName || data.location || 'Station'} (${Number(data.voltage || 0).toFixed(3)} V)`,
         evidenceId: data.evidenceId,
+        liveStreamUrl: data.liveStreamUrl || '',
         timestamp: new Date().toISOString(),
         read: false,
         severity: 'critical'
@@ -59,6 +75,7 @@ export const NotificationProvider = ({ children }) => {
         title: 'Incident Assigned to Field Officer',
         message: `${data.evidenceId || 'Incident'} assigned to ${deptName} (${data.assignedOfficerName || 'Officer'}) by ${data.assignedBy || 'Authority'}`,
         evidenceId: data.evidenceId,
+        liveStreamUrl: data.liveStreamUrl || '',
         assignedDepartment: data.assignedDepartment,
         incidentStatus: 'ASSIGNED',
         timestamp: new Date().toISOString(),
@@ -100,6 +117,7 @@ export const NotificationProvider = ({ children }) => {
         title,
         message,
         evidenceId: data.evidenceId,
+        liveStreamUrl: data.liveStreamUrl || '',
         incidentStatus: data.incidentStatus,
         timestamp: new Date().toISOString(),
         read: false,
@@ -117,6 +135,7 @@ export const NotificationProvider = ({ children }) => {
         type: 'alert',
         title: 'Sensor Threshold Alert',
         message: data.message || `Sensor ${data.deviceId} exceeded voltage threshold (${data.voltage} V)`,
+        liveStreamUrl: data.liveStreamUrl || '',
         timestamp: new Date().toISOString(),
         read: false,
         severity: 'warning'
@@ -137,7 +156,7 @@ export const NotificationProvider = ({ children }) => {
       socket.off('incident-status-updated', handleStatusUpdated);
       socket.off('sensor-alert', handleSensorAlert);
     };
-  }, []);
+  }, [user]);
 
   const markAllAsRead = useCallback(() => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -152,13 +171,13 @@ export const NotificationProvider = ({ children }) => {
     localStorage.removeItem('aware_notifications');
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = user ? notifications.filter(n => !n.read).length : 0;
 
   return (
     <NotificationContext.Provider value={{
-      notifications,
+      notifications: user ? notifications : [],
       unreadCount,
-      toastAlert,
+      toastAlert: user ? toastAlert : null,
       setToastAlert,
       markAllAsRead,
       markAsRead,

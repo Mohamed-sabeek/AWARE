@@ -11,12 +11,20 @@ import {
   saveInvestigationNotes,
   resolveIncidentWithEvidence,
   captureEvidence,
+  captureRawEvidence,
   deleteEvidence
 } from '../controllers/evidenceController.js';
 
 const router = express.Router();
 
-// Hardware ESP32-CAM Image Upload Endpoint (Public ingestion from IoT camera)
+// Dedicated ESP32 Hardware RAW Binary JPEG Ingestion (No Busboy / No Multipart)
+router.post(
+  '/upload-raw',
+  express.raw({ type: ['image/jpeg', 'application/octet-stream', '*/*'], limit: '5mb' }),
+  captureRawEvidence
+);
+
+// Standard Multipart Image Upload Endpoints (Retained for browser / admin uploads)
 router.post('/upload', diskUpload.single('image'), captureEvidence);
 router.post('/capture', diskUpload.single('image'), captureEvidence);
 

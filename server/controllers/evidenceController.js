@@ -1,8 +1,15 @@
 import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import Evidence from '../models/Evidence.js';
 import Sensor from '../models/Sensor.js';
 import cloudinary from '../config/cloudinary.js';
 import ActivityLog from '../models/ActivityLog.js';
+import { getPublicLiveStreamUrl } from '../services/streamRelayService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper to look up evidence by Mongo ObjectId or custom evidenceId string
 const findEvidenceRecord = async (id) => {
@@ -209,7 +216,8 @@ export const assignIncident = async (req, res) => {
         assignmentNotes: evidence.assignmentNotes,
         locationName: evidence.locationName || evidence.location,
         voltage: evidence.voltage,
-        sensorId: evidence.sensorId
+        sensorId: evidence.sensorId,
+        liveStreamUrl: evidence.liveStreamUrl || getPublicLiveStreamUrl(evidence.sensorId)
       };
 
       io.emit('incident-assigned', payload);
@@ -476,6 +484,8 @@ export const captureEvidence = async (req, res) => {
     }
 
     const sensor = await Sensor.findOne({ sensorId: deviceId || 'ESP32-CAM-001' });
+    const targetDeviceId = deviceId || 'ESP32-CAM-001';
+    const liveStreamUrl = getPublicLiveStreamUrl(targetDeviceId);
 
     const evidenceCount = await Evidence.countDocuments();
     const evidenceId = `EVT-${Date.now()}`;
@@ -486,12 +496,13 @@ export const captureEvidence = async (req, res) => {
       cloudinaryPublicId,
       voltage: voltage !== undefined ? Number(voltage) : (sensor ? sensor.voltage : 0),
       detectionType: detectionType || 'Threshold Exceeded',
-      sensorId: deviceId || 'ESP32-CAM-001',
-      cameraId: deviceId || 'ESP32-CAM-001',
+      sensorId: targetDeviceId,
+      cameraId: targetDeviceId,
       locationName: sensor ? (sensor.locationName || sensor.location) : null,
       location: sensor ? (sensor.locationName || sensor.location) : null,
       latitude: sensor && sensor.latitude !== undefined ? sensor.latitude : null,
       longitude: sensor && sensor.longitude !== undefined ? sensor.longitude : null,
+      liveStreamUrl,
       status: 'Verified',
       incidentStatus: 'NEW'
     });
@@ -512,6 +523,122 @@ export const captureEvidence = async (req, res) => {
   } catch (error) {
     console.error('Error capturing evidence:', error);
     res.status(500).json({ success: false, message: 'Server error capturing evidence', error: error.message });
+  }
+};
+
+/**
+ * @desc    Capture new evidence from ESP32 camera via RAW binary JPEG upload
+ * @route   POST /api/evidence/upload-raw
+ * @access  Public/Sensor (Dedicated Hardware IoT Endpoint - No Busboy)
+ */
+export const captureRawEvidence = async (req, res) => {
+  try {
+    const rawBuffer = req.body;
+    const deviceId = req.headers['x-device-id'] || req.headers['device-id'] || 'ESP32-CAM-001';
+    const rawVoltage = req.headers['x-voltage'] || req.headers['voltage'];
+    const detectionType = req.headers['x-detection-type'] || req.headers['detection-type'] || 'Threshold Exceeded';
+    const numericVoltage = rawVoltage !== undefined && rawVoltage !== null ? parseFloat(rawVoltage) : 0;
+
+    console.log(`[Evidence RAW] Upload received from device: ${deviceId}, reported voltage: ${numericVoltage} V`);
+
+    // 1. Validate payload existence & buffer type
+    if (!rawBuffer || !Buffer.isBuffer(rawBuffer) || rawBuffer.length === 0) {
+      console.warn('[Evidence RAW] Rejected: Empty or non-buffer payload');
+      return res.status(400).json({
+        success: false,
+        message: 'Empty or invalid JPEG payload'
+      });
+    }
+
+    const byteLength = rawBuffer.length;
+    console.log(`[Evidence RAW] Bytes received: ${byteLength}`);
+
+    // Enforce size limit (max 5MB)
+    if (byteLength > 5 * 1024 * 1024) {
+      console.warn(`[Evidence RAW] Rejected: Payload too large (${byteLength} bytes)`);
+      return res.status(400).json({
+        success: false,
+        message: 'Payload exceeds maximum allowed size (5MB)'
+      });
+    }
+
+    // 2. Validate JPEG Magic Bytes: SOI (0xFF, 0xD8) and EOI (0xFF, 0xD9)
+    if (
+      byteLength < 4 ||
+      rawBuffer[0] !== 0xFF ||
+      rawBuffer[1] !== 0xD8 ||
+      rawBuffer[byteLength - 2] !== 0xFF ||
+      rawBuffer[byteLength - 1] !== 0xD9
+    ) {
+      console.warn(`[Evidence RAW] Rejected: Invalid JPEG magic bytes (Header: ${rawBuffer[0]?.toString(16)} ${rawBuffer[1]?.toString(16)}, Tail: ${rawBuffer[byteLength-2]?.toString(16)} ${rawBuffer[byteLength-1]?.toString(16)})`);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid JPEG image format'
+      });
+    }
+
+    console.log('[Evidence RAW] JPEG validated (SOI 0xFFD8 and EOI 0xFFD9 verified)');
+
+    // 3. Save JPEG directly into server/uploads/ directory
+    const uploadDir = path.resolve(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const filename = `evidence-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
+    const filepath = path.join(uploadDir, filename);
+    fs.writeFileSync(filepath, rawBuffer);
+    const imageUrl = `/uploads/${filename}`;
+    console.log(`[Evidence RAW] Image saved: ${imageUrl}`);
+
+    // 4. Query Sensor for geolocation metadata snapshot
+    const sensor = await Sensor.findOne({ sensorId: deviceId });
+    const targetDeviceId = deviceId || 'ESP32-CAM-001';
+    const liveStreamUrl = getPublicLiveStreamUrl(targetDeviceId);
+
+    // 5. Create Evidence MongoDB Document
+    const evidenceId = `EVT-${Date.now()}`;
+    const newEvidence = new Evidence({
+      evidenceId,
+      imageUrl,
+      cloudinaryPublicId: '',
+      voltage: !isNaN(numericVoltage) && numericVoltage > 0 ? numericVoltage : (sensor ? sensor.voltage : 0),
+      detectionType,
+      sensorId: targetDeviceId,
+      cameraId: targetDeviceId,
+      locationName: sensor ? (sensor.locationName || sensor.location) : null,
+      location: sensor ? (sensor.locationName || sensor.location) : null,
+      latitude: sensor && sensor.latitude !== undefined ? sensor.latitude : null,
+      longitude: sensor && sensor.longitude !== undefined ? sensor.longitude : null,
+      liveStreamUrl,
+      status: 'Verified',
+      incidentStatus: 'NEW'
+    });
+
+    const savedEvidence = await newEvidence.save();
+    console.log(`[Evidence RAW] Evidence document created: ${savedEvidence.evidenceId}`);
+
+    // 6. Emit real-time Socket.IO event
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('evidence-captured', savedEvidence);
+      console.log(`[Evidence RAW] evidence-captured emitted for ${savedEvidence.evidenceId}`);
+    }
+
+    // 7. Return HTTP 201 Created
+    return res.status(201).json({
+      success: true,
+      message: 'Evidence captured successfully',
+      data: savedEvidence
+    });
+
+  } catch (error) {
+    console.error('[Evidence RAW] Server error processing raw evidence:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error processing raw evidence upload',
+      error: error.message
+    });
   }
 };
 

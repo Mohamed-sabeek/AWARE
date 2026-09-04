@@ -34,5 +34,13 @@ client/dist
 client/build
 
 # Backend uploads and temporary files
-server/uploads
+server/uploads/*
+!server/uploads/.gitkeep
 server/temp
+
+# Cloudflare Tunnel binaries and runtime files
+*.exe
+cloudflared*
+.tunnel_url
+server/.tunnel_url
+*.tunnel_url

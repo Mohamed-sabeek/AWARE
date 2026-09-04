@@ -69,6 +69,11 @@ const evidenceSchema = new mongoose.Schema({
     required: false,
     default: 'ESP32-CAM-001'
   },
+  liveStreamUrl: {
+    type: String,
+    required: false,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['Pending', 'Verified', 'Rejected', 'Report Generated'],

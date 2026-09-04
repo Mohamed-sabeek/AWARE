@@ -10,5 +10,9 @@ export default defineConfig({
   ],
   server: {
     port: 5183,
+    allowedHosts: [
+      'training-empirical-relatives-powers.trycloudflare.com',
+      '.trycloudflare.com'
+    ],
   },
 })

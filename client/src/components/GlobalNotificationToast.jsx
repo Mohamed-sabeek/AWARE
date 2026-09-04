@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, CheckCircle2, AlertTriangle, Bell, X, ArrowRight } from 'lucide-react';
+import { ShieldAlert, CheckCircle2, AlertTriangle, Bell, X, ArrowRight, Video } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,7 +19,8 @@ const GlobalNotificationToast = () => {
     }
   }, [toastAlert, setToastAlert]);
 
-  if (!toastAlert) return null;
+  // Do not render toast notifications if user is not authenticated or there is no alert
+  if (!user || !toastAlert) return null;
 
   const handleClick = () => {
     if (toastAlert.id) {
@@ -96,16 +97,31 @@ const GlobalNotificationToast = () => {
               {toastAlert.message}
             </p>
 
-            {toastAlert.evidenceId && (
-              <button
-                type="button"
-                onClick={handleClick}
-                className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer group"
-              >
-                <span>View in Incident Portal</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
+            <div className="mt-2.5 flex flex-wrap items-center gap-3">
+              {toastAlert.liveStreamUrl && (
+                <a
+                  href={toastAlert.liveStreamUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setToastAlert(null)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-[11.5px] font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>View Live Camera</span>
+                </a>
+              )}
+
+              {toastAlert.evidenceId && (
+                <button
+                  type="button"
+                  onClick={handleClick}
+                  className="inline-flex items-center gap-1 text-[12px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer group"
+                >
+                  <span>Respond</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
+            </div>
           </div>
 
           <button

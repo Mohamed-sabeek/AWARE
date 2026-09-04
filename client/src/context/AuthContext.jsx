@@ -64,6 +64,7 @@ export const AuthProvider = ({ children }) => {
       if (isMounted) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('aware_notifications');
         setUser(null);
         setLoading(false);
       }
@@ -94,6 +95,7 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('aware_notifications');
     setUser(null);
     setLoading(false);
   }, []);

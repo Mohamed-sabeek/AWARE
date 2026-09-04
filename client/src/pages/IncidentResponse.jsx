@@ -30,9 +30,10 @@ import {
   Check,
   Info,
   ChevronRight,
-  Search
+  Search,
+  Video
 } from 'lucide-react';
-import api from '../services/api';
+import api, { API_URL } from '../services/api';
 import getSocket from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import { getEvidenceImageUrl } from '../utils/imageUrl';
@@ -636,8 +637,20 @@ const IncidentResponse = () => {
                         </div>
                       </div>
 
-                      {/* Right: Action */}
-                      <div className="flex items-center gap-3 shrink-0 w-full lg:w-auto justify-end">
+                      {/* Right: Action & Live Camera */}
+                      <div className="flex items-center gap-2.5 shrink-0 w-full lg:w-auto justify-end">
+                        {item.liveStreamUrl && (
+                          <a
+                            href={item.liveStreamUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl text-[12.5px] font-bold border border-red-200 hover:border-red-600 transition-colors cursor-pointer"
+                            title="Open Direct Live Camera Stream (No Login)"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>View Live Camera</span>
+                          </a>
+                        )}
                         <Link
                           to={`${basePath}/incidents/${item.evidenceId || item._id}`}
                           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-bold text-white shadow-md transition-all cursor-pointer bg-blue-600 hover:bg-blue-700"
@@ -746,6 +759,18 @@ const IncidentResponse = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {incident.liveStreamUrl && (
+              <a
+                href={incident.liveStreamUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[13px] font-bold shadow-xs transition-colors cursor-pointer"
+                title="Open Direct Live Camera Stream (No Login)"
+              >
+                <Video className="w-4 h-4" />
+                <span>View Live Camera</span>
+              </a>
+            )}
             <button
               type="button"
               disabled={pdfGenerating}
@@ -805,16 +830,30 @@ const IncidentResponse = () => {
                   <Camera className="w-5 h-5 text-blue-600" />
                   <h3 className="text-[17px] font-extrabold text-slate-900">Original Captured Evidence</h3>
                 </div>
-                {resolvedImageUrl && (
-                  <button
-                    type="button"
-                    onClick={handleDownloadImage}
-                    className="flex items-center gap-1.5 text-[12.5px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download Image</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {incident.liveStreamUrl && (
+                    <a
+                      href={incident.liveStreamUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-[12.5px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-lg border border-red-200 transition-colors cursor-pointer"
+                      title="Open Direct Live Camera Stream (No Login)"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span>Live Stream</span>
+                    </a>
+                  )}
+                  {resolvedImageUrl && (
+                    <button
+                      type="button"
+                      onClick={handleDownloadImage}
+                      className="flex items-center gap-1.5 text-[12.5px] font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download Image</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="w-full bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center min-h-[280px] max-h-[420px] border border-slate-200 relative">

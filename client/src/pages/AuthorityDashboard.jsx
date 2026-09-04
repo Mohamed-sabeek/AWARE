@@ -18,9 +18,10 @@ import {
   Radio, 
   X, 
   BellRing, 
-  ExternalLink 
+  ExternalLink,
+  Video
 } from 'lucide-react';
-import api from '../services/api';
+import api, { API_URL } from '../services/api';
 import getSocket from '../services/socket';
 import PageHeader from '../components/PageHeader';
 import { getEvidenceImageUrl } from '../utils/imageUrl';
@@ -188,17 +189,21 @@ const AuthorityDashboard = () => {
 
     // 1. When a new evidence/incident is captured by ESP32-CAM
     const handleEvidenceCaptured = (data) => {
+      const targetSensorId = data.sensorId || data.deviceId || 'ESP32-CAM-001';
+      const liveStreamUrl = data.liveStreamUrl || null;
+
       const newIncident = {
         _id: data.evidenceId || String(Date.now()),
         evidenceId: data.evidenceId,
         imageUrl: data.imageUrl,
-        sensorId: data.sensorId || data.deviceId || 'ESP32-CAM-001',
+        sensorId: targetSensorId,
         voltage: data.voltage,
         detectionType: data.detectionType || 'Threshold Exceeded',
         locationName: data.locationName || data.location || 'ESP32 Station',
         location: data.locationName || data.location || 'ESP32 Station',
         latitude: data.latitude,
         longitude: data.longitude,
+        liveStreamUrl,
         incidentStatus: data.incidentStatus || 'NEW',
         status: data.status || 'Verified',
         confidence: 95,
@@ -228,6 +233,7 @@ const AuthorityDashboard = () => {
         sensorId: newIncident.sensorId,
         location: newIncident.locationName,
         voltage: newIncident.voltage,
+        liveStreamUrl: newIncident.liveStreamUrl,
         time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       });
 
@@ -352,6 +358,17 @@ const AuthorityDashboard = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {realtimeAlert.liveStreamUrl && (
+                  <a
+                    href={realtimeAlert.liveStreamUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-[13px] font-bold border border-white/40 shadow-xs transition-all cursor-pointer"
+                  >
+                    <Video className="w-4 h-4" />
+                    <span>View Live Camera</span>
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -560,8 +577,20 @@ const AuthorityDashboard = () => {
                           </div>
                         </div>
 
-                        {/* Right: Navigate to Dedicated Incident Response Page */}
+                        {/* Right: Navigate to Dedicated Incident Response Page & Live Camera */}
                         <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                          {incident.liveStreamUrl && (
+                            <a
+                              href={incident.liveStreamUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl text-[12px] font-bold border border-red-200 hover:border-red-600 transition-colors cursor-pointer"
+                              title="Open Direct Live Camera Stream (No Login)"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>View Live Camera</span>
+                            </a>
+                          )}
                           <Link
                             to={`/authority/incidents/${targetId}`}
                             className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl text-[12.5px] font-bold transition-colors cursor-pointer"

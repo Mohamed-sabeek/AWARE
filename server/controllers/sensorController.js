@@ -3,6 +3,7 @@ import Sensor from '../models/Sensor.js';
 import SensorReading from '../models/SensorReading.js';
 import Alert from '../models/Alert.js';
 import ActivityLog from '../models/ActivityLog.js';
+import { getPublicLiveStreamUrl } from '../services/streamRelayService.js';
 
 // @desc    Get all sensors
 // @route   GET /api/sensors
@@ -347,6 +348,7 @@ export const recordSensorReading = async (req, res) => {
           threshold: Number(threshold),
           severity: createdAlert.severity,
           message: createdAlert.message,
+          liveStreamUrl: getPublicLiveStreamUrl(sensor.sensorId),
           timestamp: createdAlert.timestamp
         });
       }

@@ -2,31 +2,37 @@
  * =========================================================================
  * AWARE ESP32-CAM + ADS1115 + MQ Gas Sensor Firmware
  * FreeRTOS Dual-Core Architecture (Smooth MJPEG Stream + Real-Time Sensor)
+ * Dedicated Hardware RAW Binary JPEG Ingestion (No Busboy / No Multipart)
+ * Version: RAW-UPLOAD-V2
  * =========================================================================
  * 
  * FreeRTOS Task Architecture:
  * ----------------------------
  * CORE 0:
  *   - StreamTask: Dedicated Port 81 MJPEG live stream server.
- *   - Runs at ~14-15 FPS (68 ms frame interval) with QVGA (320x240) & Quality 14.
- *   - Zero heap-churn frame loop + CAMERA_GRAB_LATEST eliminates FB-OVF.
+ *   - Runs at ~14-15 FPS (68 ms frame interval) with VGA/QVGA & JPEG.
+ *   - Zero heap-churn frame loop + CAMERA_GRAB_LATEST.
  *   - Yields to FreeRTOS/lwIP stack so WiFi remains completely responsive.
  * 
  * CORE 1:
  *   - SensorTask (loop): Reads ADS1115 (16-bit ADC) every 1000 ms.
- *   - Sends non-blocking JSON HTTP POST to /api/sensors/reading.
- *   - Evaluates gas threshold (>= 0.400 V) and manages evidence cycle.
+ *   - Sends JSON HTTP POST to /api/sensors/reading.
+ *   - Threshold State Machine with Debounced Clearing:
+ *       Trigger: Voltage >= 0.400 V  --> Capture immediately + every 5s while active.
+ *       Hysteresis: 0.390 V <= Voltage < 0.400 V  --> Stays active, continues 5s captures.
+ *       Clear: Voltage < 0.390 V continuously for 3000 ms  --> Incident cleared.
  * 
  * EVIDENCE CAPTURE (Mutex-Protected):
- *   - Immediate capture on breach + 5-second recurring captures while active.
- *   - Flash LED (GPIO 4) pulsed only for 150 ms during shutter.
- *   - Fast copy to PSRAM & immediate cameraMutex release (<20 ms).
- *   - Background multipart HTTP upload to /api/evidence/upload.
+ *   - Flash LED (GPIO 4) turned ON only during shutter (~120ms), then OFF immediately.
+ *   - Frame buffer copied to memory and cameraMutex released immediately (<20ms).
+ *   - Validates JPEG SOI (0xFFD8) and EOI (0xFFD9).
+ *   - Direct raw binary HTTP POST to /api/evidence/upload-raw.
+ *   - Awaits HTTP 201 Created server response.
  * 
  * Hardware Connections:
  * - ESP32-CAM (AI-Thinker model, OV2640)
- * - ADS1115 I2C: SDA -> GPIO 13, SCL -> GPIO 15
- * - MQ Gas Sensor Analog Out (via 22k/22k divider) -> ADS1115 A0 (Channel 0)
+ * - ADS1115 I2C: SDA -> GPIO 13, SCL -> GPIO 14
+ * - MQ Gas Sensor Analog Out -> ADS1115 A0 (Channel 0)
  * - Built-in Flash LED -> GPIO 4
  */
 
@@ -39,17 +45,26 @@
 // ==========================================
 // 1. NETWORK & BACKEND CONFIGURATION
 // ==========================================
-const char* ssid     = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid     = "Airtel_Vaathiyare";
+const char* password = "Nanavanapoduren@69";
 
 // Backend Server Configuration
-const char* serverHost = "10.190.0.124";
+const char* serverHost = "192.168.1.11";
 const int   serverPort = 5009;
-const String SENSOR_ENDPOINT   = "http://10.190.0.124:5009/api/sensors/reading";
-const String EVIDENCE_ENDPOINT = "http://10.190.0.124:5009/api/evidence/upload";
+const String SENSOR_ENDPOINT   = "http://192.168.1.11:5009/api/sensors/reading";
+const String RAW_EVIDENCE_PATH = "/api/evidence/upload-raw";
 
 const char* DEVICE_ID = "ESP32-CAM-001";
-const float THRESHOLD = 0.400; // Voltage limit (V)
+
+// Threshold & Debounce Configuration
+const float TRIGGER_THRESHOLD   = 0.400; // Voltage to start incident (V)
+const float CLEAR_THRESHOLD     = 0.390; // Voltage to clear incident (V)
+const unsigned long CLEAR_DEBOUNCE_MS = 3000; // 3 seconds continuous below 0.390V to clear
+
+// Timing Configuration (millis)
+const unsigned long SENSOR_INTERVAL       = 1000;  // 1-second sensor broadcast
+const unsigned long EVIDENCE_INTERVAL     = 5000;  // 5-second recurring evidence capture
+const unsigned long STREAM_FRAME_INTERVAL = 68;    // ~14.7 FPS (Smooth, stable frame rate)
 
 // Live Stream Server on Port 81 (Managed on Core 0)
 WiFiServer streamServer(81);
@@ -60,19 +75,14 @@ bool isStreaming = false;
 SemaphoreHandle_t cameraMutex = NULL;
 TaskHandle_t streamTaskHandle = NULL;
 
-// ==========================================
-// 2. TIMING CONFIGURATION (millis)
-// ==========================================
-const unsigned long SENSOR_INTERVAL       = 1000;  // 1-second sensor broadcast
-const unsigned long EVIDENCE_INTERVAL     = 5000;  // 5-second recurring evidence capture
-const unsigned long STREAM_FRAME_INTERVAL = 68;    // ~14.7 FPS (Smooth, stable & anti-FB-OVF)
-
-unsigned long lastSensorTime      = 0;
-unsigned long lastCameraTime      = 0;
-bool isThresholdActive            = false;
+// Runtime State Variables
+unsigned long lastSensorTime           = 0;
+unsigned long lastEvidenceTime         = 0;
+unsigned long belowClearThresholdTime  = 0;
+bool isIncidentActive                  = false;
 
 // ==========================================
-// 3. HARDWARE PIN DEFINITIONS (AI-THINKER)
+// 2. HARDWARE PIN DEFINITIONS (AI-THINKER)
 // ==========================================
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
@@ -95,12 +105,12 @@ bool isThresholdActive            = false;
 
 // I2C Pins for ADS1115 on ESP32-CAM
 #define I2C_SDA           13
-#define I2C_SCL           15
+#define I2C_SCL           14
 
 Adafruit_ADS1115 ads;
 
 // ==========================================
-// 4. CAMERA INITIALIZATION (ANTI-FB-OVF)
+// 3. CAMERA INITIALIZATION (OV2640)
 // ==========================================
 bool initCamera() {
   camera_config_t config;
@@ -122,18 +132,18 @@ bool initCamera() {
   config.pin_sccb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn     = PWDN_GPIO_NUM;
   config.pin_reset    = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = 20000000; // Preserved working 20MHz clock
   config.pixel_format = PIXFORMAT_JPEG;
   config.grab_mode    = CAMERA_GRAB_LATEST; // Discards stale frames automatically
   
   if (psramFound()) {
-    config.frame_size   = FRAMESIZE_QVGA; // 320x240 for fluid 14-15 FPS & low memory pressure
-    config.jpeg_quality = 14;             // Balanced quality (prevents DMA/FIFO overflow)
+    config.frame_size   = FRAMESIZE_VGA;
+    config.jpeg_quality = 12;
     config.fb_count     = 2;
     config.fb_location  = CAMERA_FB_IN_PSRAM;
   } else {
     config.frame_size   = FRAMESIZE_QVGA;
-    config.jpeg_quality = 15;
+    config.jpeg_quality = 14;
     config.fb_count     = 1;
     config.fb_location  = CAMERA_FB_IN_DRAM;
   }
@@ -152,12 +162,12 @@ bool initCamera() {
     s->set_saturation(s, 0);
   }
 
-  Serial.println("[CAMERA] OV2640 Initialized with CAMERA_GRAB_LATEST & QVGA (320x240)");
+  Serial.println("[CAMERA] OV2640 Initialized");
   return true;
 }
 
 // ==========================================
-// 5. READ SENSOR VOLTAGE (ADS1115 16-BIT)
+// 4. READ SENSOR VOLTAGE (ADS1115 16-BIT)
 // ==========================================
 float readSensorVoltage() {
   int16_t adc0 = ads.readADC_SingleEnded(0);
@@ -168,7 +178,7 @@ float readSensorVoltage() {
 }
 
 // ==========================================
-// 6. SEND SENSOR READING JSON (POST)
+// 5. SEND SENSOR READING JSON (POST)
 // ==========================================
 void sendSensorReading(float voltage) {
   if (WiFi.status() != WL_CONNECTED) return;
@@ -186,33 +196,38 @@ void sendSensorReading(float voltage) {
   if (httpResponseCode > 0) {
     Serial.printf("[SENSOR STREAM] Posted: %.3f V | Code: %d\n", voltage, httpResponseCode);
   } else {
-    Serial.printf("[SENSOR STREAM] Error sending reading: %s\n", http.errorToString(httpResponseCode).c_str());
+    Serial.printf("[SENSOR STREAM] Post error (%.3f V): %s\n", voltage, http.errorToString(httpResponseCode).c_str());
   }
   http.end();
 }
 
 // ==========================================
-// 7. CAPTURE & UPLOAD EVIDENCE JPEG
+// 6. CAPTURE & UPLOAD EVIDENCE (RAW JPEG BINARY)
 // ==========================================
 void captureAndUploadEvidence(float voltage) {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[UPLOAD] WiFi not connected. Aborting evidence capture.");
+    return;
+  }
 
   uint8_t* evidenceBuffer = NULL;
   size_t evidenceLen = 0;
 
+  Serial.println("[CAMERA] Evidence capture started");
+
   // 1. Acquire Camera Mutex (Wait up to 100ms)
   if (xSemaphoreTake(cameraMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-    Serial.println("[CAMERA TRIGGER] Flash ON & Capturing Evidence Frame...");
-    
     // Flash ON immediately before shutter
     digitalWrite(FLASH_LED_PIN, HIGH);
-    delay(150); // Flash stabilization delay
+    Serial.println("[FLASH] ON");
+    delay(120); // Flash & sensor exposure stabilization delay
 
     // Capture Frame
     camera_fb_t * fb = esp_camera_fb_get();
     
     // Flash OFF immediately after shutter
     digitalWrite(FLASH_LED_PIN, LOW);
+    Serial.println("[FLASH] OFF");
 
     if (fb) {
       evidenceLen = fb->len;
@@ -225,118 +240,166 @@ void captureAndUploadEvidence(float voltage) {
 
       if (evidenceBuffer) {
         memcpy(evidenceBuffer, fb->buf, evidenceLen);
+        Serial.printf("[CAMERA] JPEG captured: %u bytes\n", (unsigned int)evidenceLen);
+      } else {
+        Serial.println("[CAMERA] Memory allocation failed for evidence buffer!");
       }
 
       // Return camera buffer to driver immediately
       esp_camera_fb_return(fb);
     } else {
-      Serial.println("[CAMERA TRIGGER] Camera capture failed!");
+      Serial.println("[CAMERA] Camera capture failed! Framebuffer is NULL");
     }
 
     // Release Camera Mutex immediately (<20ms) so Live Stream on Core 0 can resume
     xSemaphoreGive(cameraMutex);
   } else {
-    Serial.println("[CAMERA TRIGGER] Camera busy, skipping evidence frame.");
+    Serial.println("[CAMERA] Camera busy, skipping evidence frame.");
     return;
   }
 
-  if (!evidenceBuffer || evidenceLen == 0) {
+  if (!evidenceBuffer || evidenceLen < 4) {
     if (evidenceBuffer) free(evidenceBuffer);
     return;
   }
 
-  Serial.printf("[CAMERA TRIGGER] Evidence frame captured (%u bytes). Uploading...\n", evidenceLen);
-
-  // 2. Perform Multipart HTTP Upload over WiFiClient
-  WiFiClient client;
-  client.setTimeout(3); // 3 seconds timeout
-  if (client.connect(serverHost, serverPort)) {
-    const char* boundary = "----AWAREBoundary7MA4YWxkTrZu0gW";
-    
-    char head[384];
-    int headLen = snprintf(head, sizeof(head),
-      "--%s\r\n"
-      "Content-Disposition: form-data; name=\"deviceId\"\r\n\r\n"
-      "%s\r\n"
-      "--%s\r\n"
-      "Content-Disposition: form-data; name=\"voltage\"\r\n\r\n"
-      "%.3f\r\n"
-      "--%s\r\n"
-      "Content-Disposition: form-data; name=\"detectionType\"\r\n\r\n"
-      "Threshold Exceeded\r\n"
-      "--%s\r\n"
-      "Content-Disposition: form-data; name=\"image\"; filename=\"evidence.jpg\"\r\n"
-      "Content-Type: image/jpeg\r\n\r\n",
-      boundary, DEVICE_ID, boundary, voltage, boundary, boundary);
-
-    char tail[64];
-    int tailLen = snprintf(tail, sizeof(tail), "\r\n--%s--\r\n", boundary);
-    uint32_t totalLen = headLen + evidenceLen + tailLen;
-
-    client.printf("POST /api/evidence/upload HTTP/1.1\r\n"
-                  "Host: %s:%d\r\n"
-                  "Content-Length: %u\r\n"
-                  "Content-Type: multipart/form-data; boundary=%s\r\n"
-                  "Connection: close\r\n\r\n",
-                  serverHost, serverPort, totalLen, boundary);
-
-    client.write((const uint8_t*)head, headLen);
-
-    // Stream JPEG bytes in 1024-byte chunks
-    size_t bufferSize = 1024;
-    for (size_t n = 0; n < evidenceLen; n += bufferSize) {
-      size_t chunk = (n + bufferSize < evidenceLen) ? bufferSize : (evidenceLen - n);
-      client.write(evidenceBuffer + n, chunk);
-    }
-
-    client.write((const uint8_t*)tail, tailLen);
-    client.flush();
-    Serial.println("[CAMERA TRIGGER] Evidence upload successfully completed.");
+  // 2. Validate JPEG SOI (0xFF, 0xD8) and EOI (0xFF, 0xD9)
+  if (evidenceBuffer[0] == 0xFF && evidenceBuffer[1] == 0xD8 &&
+      evidenceBuffer[evidenceLen - 2] == 0xFF && evidenceBuffer[evidenceLen - 1] == 0xD9) {
+    Serial.println("[CAMERA] JPEG VALID");
+    Serial.printf("[CAMERA] JPEG size: %u bytes\n", (unsigned int)evidenceLen);
   } else {
-    Serial.println("[CAMERA TRIGGER] Connection to backend upload endpoint failed.");
+    Serial.println("[CAMERA] JPEG INVALID (Magic bytes mismatch)");
+    free(evidenceBuffer);
+    return;
   }
 
-  // Free evidence copy buffer
+  // 3. Perform Direct Raw Binary JPEG Upload (No Multipart / No Busboy)
+  Serial.printf("[UPLOAD] Connecting to %s:%d\n", serverHost, serverPort);
+  WiFiClient client;
+  client.setTimeout(4000); // 4 seconds timeout
+
+  if (!client.connect(serverHost, serverPort)) {
+    Serial.println("[UPLOAD] Backend connection FAILED");
+    free(evidenceBuffer);
+    return;
+  }
+
+  Serial.println("[UPLOAD] POST /api/evidence/upload-raw");
+  Serial.printf("[UPLOAD] Sending JPEG: %u bytes\n", (unsigned int)evidenceLen);
+
+  // Send raw HTTP request headers
+  client.printf("POST /api/evidence/upload-raw HTTP/1.1\r\n"
+                "Host: %s:%d\r\n"
+                "User-Agent: AWARE-ESP32-CAM/1.0\r\n"
+                "Content-Type: image/jpeg\r\n"
+                "Content-Length: %u\r\n"
+                "X-Device-ID: %s\r\n"
+                "X-Voltage: %.4f\r\n"
+                "X-Detection-Type: Threshold Exceeded\r\n"
+                "Connection: close\r\n\r\n",
+                serverHost, serverPort, (unsigned int)evidenceLen, DEVICE_ID, voltage);
+
+  // Stream raw JPEG binary in 1024-byte chunks
+  size_t bufferSize = 1024;
+  size_t sentBytes = 0;
+  for (size_t n = 0; n < evidenceLen; n += bufferSize) {
+    size_t chunk = (n + bufferSize < evidenceLen) ? bufferSize : (evidenceLen - n);
+    size_t written = client.write(evidenceBuffer + n, chunk);
+    if (written == 0) {
+      Serial.println("[UPLOAD] Socket write failed mid-stream!");
+      break;
+    }
+    sentBytes += written;
+  }
+  client.flush();
+
+  Serial.printf("[UPLOAD] Sent: %u / %u bytes\n", (unsigned int)sentBytes, (unsigned int)evidenceLen);
+  Serial.println("[UPLOAD] Waiting for backend response...");
+
+  // 4. Await and verify HTTP 201 Created server response
+  unsigned long respStart = millis();
+  int statusCode = 0;
+  while (client.connected() && millis() - respStart < 4000) {
+    if (client.available()) {
+      String statusLine = client.readStringUntil('\n');
+      if (statusLine.startsWith("HTTP/1.")) {
+        int firstSpace = statusLine.indexOf(' ');
+        if (firstSpace > 0) {
+          statusCode = statusLine.substring(firstSpace + 1, firstSpace + 4).toInt();
+        }
+        break;
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(5));
+  }
+
+  if (statusCode == 201 || statusCode == 200) {
+    Serial.printf("[UPLOAD] HTTP %d Created\n", statusCode);
+    Serial.println("[UPLOAD] Evidence upload SUCCESS\n");
+  } else if (statusCode > 0) {
+    Serial.printf("[UPLOAD] Evidence upload FAILED - HTTP %d\n\n", statusCode);
+  } else {
+    Serial.println("[UPLOAD] Backend response TIMEOUT\n");
+  }
+
+  client.stop();
   free(evidenceBuffer);
 }
 
 // ==========================================
-// 8. DEDICATED STREAM TASK (PINNED TO CORE 0)
+// 7. DEDICATED STREAM TASK (PINNED TO CORE 0)
 // ==========================================
 void streamTask(void *pvParameters) {
   Serial.printf("[STREAM TASK] Started on Core %d\n", xPortGetCoreID());
 
-  // Reusable header buffer (avoids dynamic memory allocations inside frame loop)
-  char frameHeader[80];
-  const char* mjpegResponseHeader = 
+  // Cloudflare/Proxy compliant multipart HTTP response header
+  static const char* mjpegResponseHeader = 
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"
+    "Cache-Control: no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0\r\n"
+    "Pragma: no-cache\r\n"
+    "Expires: -1\r\n"
     "Access-Control-Allow-Origin: *\r\n"
-    "Connection: close\r\n\r\n";
+    "Access-Control-Allow-Headers: *\r\n"
+    "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
+    "Connection: keep-alive\r\n\r\n";
+
+  char frameHeader[96];
 
   for (;;) {
-    // 1. Accept new incoming browser connection on Port 81
+    // 1. Accept new incoming browser / Cloudflare tunnel connection on Port 81
     if (!streamClient || !streamClient.connected()) {
       WiFiClient newClient = streamServer.available();
       if (newClient) {
         streamClient = newClient;
         streamClient.setNoDelay(true);
+        streamClient.setTimeout(2000); // 2-second timeout for streaming operations
         isStreaming = false;
 
-        // Read initial HTTP GET request non-blockingly
+        // Drain full HTTP request header from proxy / client to prevent socket pipeline stalls
         unsigned long startWait = millis();
-        while (streamClient.connected() && millis() - startWait < 200) {
-          if (streamClient.available()) {
+        bool isBlankLine = false;
+        char prevChar = 0;
+        while (streamClient.connected() && (millis() - startWait < 500)) {
+          while (streamClient.available()) {
             char c = streamClient.read();
-            if (c == '\n') break;
+            if (prevChar == '\n' && (c == '\r' || c == '\n')) {
+              isBlankLine = true;
+              break;
+            }
+            prevChar = c;
+            startWait = millis();
           }
-          vTaskDelay(pdMS_TO_TICKS(1));
+          if (isBlankLine) break;
+          vTaskDelay(pdMS_TO_TICKS(2));
         }
 
-        // Send standard HTTP MJPEG Multipart headers
+        // Send standard MJPEG streaming HTTP response headers
         streamClient.print(mjpegResponseHeader);
+        streamClient.flush();
         isStreaming = true;
-        Serial.println("[STREAM SERVER] Browser connected to /stream on Port 81");
+        Serial.println("[STREAM SERVER] Stream client connected (Cloudflare/Browser) on Port 81");
       } else {
         vTaskDelay(pdMS_TO_TICKS(20));
         continue;
@@ -345,27 +408,55 @@ void streamTask(void *pvParameters) {
 
     // 2. Stream next JPEG frame if client is connected
     if (isStreaming && streamClient.connected()) {
-      // Attempt camera mutex acquisition with short 15ms timeout (skip frame if camera is busy)
-      if (xSemaphoreTake(cameraMutex, pdMS_TO_TICKS(15)) == pdTRUE) {
-        camera_fb_t * fb = esp_camera_fb_get();
-        if (fb) {
-          int headerLen = snprintf(frameHeader, sizeof(frameHeader),
-            "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n", (unsigned int)fb->len);
-          
-          streamClient.write((const uint8_t*)frameHeader, headerLen);
-          streamClient.write(fb->buf, fb->len);
-          streamClient.write((const uint8_t*)"\r\n", 2);
+      camera_fb_t * fb = NULL;
 
-          // Return camera frame buffer immediately
-          esp_camera_fb_return(fb);
-        }
+      // Acquire camera mutex briefly to grab the latest frame
+      if (xSemaphoreTake(cameraMutex, pdMS_TO_TICKS(25)) == pdTRUE) {
+        fb = esp_camera_fb_get();
         xSemaphoreGive(cameraMutex);
       }
-      
+
+      if (fb) {
+        // Zero dynamic heap allocation: format header into fixed static buffer
+        int headerLen = snprintf(frameHeader, sizeof(frameHeader),
+          "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n", (unsigned int)fb->len);
+
+        size_t writtenHeader = streamClient.write((const uint8_t*)frameHeader, headerLen);
+        bool writeSuccess = (writtenHeader == (size_t)headerLen);
+
+        // Progressive chunked transmission (2KB chunks) to feed HTTP proxy progressively
+        const size_t chunkSize = 2048;
+        const uint8_t* bufPtr = fb->buf;
+        size_t remaining = fb->len;
+
+        while (writeSuccess && remaining > 0 && streamClient.connected()) {
+          size_t toWrite = (remaining < chunkSize) ? remaining : chunkSize;
+          size_t bytesWritten = streamClient.write(bufPtr, toWrite);
+          if (bytesWritten == 0) {
+            writeSuccess = false;
+            break;
+          }
+          bufPtr += bytesWritten;
+          remaining -= bytesWritten;
+        }
+
+        if (writeSuccess && streamClient.connected()) {
+          streamClient.write((const uint8_t*)"\r\n", 2);
+          streamClient.flush(); // Flush frame immediately down the wire
+        } else {
+          isStreaming = false;
+        }
+
+        // Always return camera frame buffer immediately
+        esp_camera_fb_return(fb);
+      }
+
       // Frame pacing: ~14.7 FPS (68 ms interval)
       vTaskDelay(pdMS_TO_TICKS(STREAM_FRAME_INTERVAL));
     } else {
-      streamClient.stop();
+      if (streamClient) {
+        streamClient.stop();
+      }
       isStreaming = false;
       vTaskDelay(pdMS_TO_TICKS(20));
     }
@@ -373,7 +464,7 @@ void streamTask(void *pvParameters) {
 }
 
 // ==========================================
-// 9. SETUP
+// 8. SETUP
 // ==========================================
 void setup() {
   Serial.begin(115200);
@@ -381,6 +472,12 @@ void setup() {
   // Initialize Flash LED pin and ensure it stays OFF
   pinMode(FLASH_LED_PIN, OUTPUT);
   digitalWrite(FLASH_LED_PIN, LOW);
+
+  // Print Version & Mode Verification Banner
+  Serial.println("\n========================================");
+  Serial.println("AWARE ESP32-CAM FIRMWARE VERSION: RAW-UPLOAD-V2");
+  Serial.println("5-SECOND EVIDENCE MODE: ENABLED");
+  Serial.println("========================================\n");
 
   // Create FreeRTOS Camera Mutex
   cameraMutex = xSemaphoreCreateMutex();
@@ -435,7 +532,7 @@ void setup() {
 }
 
 // ==========================================
-// 10. MAIN SENSOR LOOP (CORE 1)
+// 9. MAIN SENSOR & THRESHOLD LOOP (CORE 1)
 // ==========================================
 void loop() {
   unsigned long currentMillis = millis();
@@ -444,7 +541,7 @@ void loop() {
   float currentVoltage = readSensorVoltage();
 
   // -------------------------------------------------------------
-  // TASK 1: Live Sensor Stream (~1-Second Interval)
+  // TASK 1: Live Sensor Telemetry Stream (~1-Second Interval)
   // -------------------------------------------------------------
   if (currentMillis - lastSensorTime >= SENSOR_INTERVAL) {
     lastSensorTime = currentMillis;
@@ -452,27 +549,51 @@ void loop() {
   }
 
   // -------------------------------------------------------------
-  // TASK 2: Camera Trigger & Continuous 5-Second Threshold Cycle
+  // TASK 2: 5-Second Evidence Capture + Debounced Hysteresis
   // -------------------------------------------------------------
-  if (currentVoltage >= THRESHOLD) {
-    if (!isThresholdActive) {
-      // 1. FIRST BREACH: Instant photo trigger (Flash ON briefly)
-      Serial.printf("[ALERT TRIGGER] First threshold breach: %.3f V >= %.3f V\n", currentVoltage, THRESHOLD);
-      isThresholdActive = true;
-      lastCameraTime = currentMillis;
+  if (currentVoltage >= TRIGGER_THRESHOLD) {
+    // Voltage is at or above trigger threshold (>= 0.400 V)
+    belowClearThresholdTime = 0; // Reset clear debounce timer
+
+    if (!isIncidentActive) {
+      // 1. FIRST BREACH: Start incident immediately & take first photo
+      isIncidentActive = true;
+      lastEvidenceTime = currentMillis;
+      Serial.printf("\n[THRESHOLD] NEW BREACH: %.3f V >= %.3f V\n", currentVoltage, TRIGGER_THRESHOLD);
       captureAndUploadEvidence(currentVoltage);
     } 
-    else if (currentMillis - lastCameraTime >= EVIDENCE_INTERVAL) {
-      // 2. RECURRING BREACH: Capture photo every 5 seconds while active
-      Serial.printf("[ALERT CYCLE] Threshold remains exceeded: %.3f V. 5s timer elapsed.\n", currentVoltage);
-      lastCameraTime = currentMillis;
+    else if (currentMillis - lastEvidenceTime >= EVIDENCE_INTERVAL) {
+      // 2. RECURRING 5-SECOND CAPTURE: Take another photo every 5 seconds while active
+      lastEvidenceTime = currentMillis;
+      Serial.printf("\n[CAMERA] 5-second evidence interval reached (Voltage: %.3f V)\n", currentVoltage);
       captureAndUploadEvidence(currentVoltage);
     }
-  } else {
-    // 3. THRESHOLD RESOLVED (< 0.400 V): Reset cycle immediately
-    if (isThresholdActive) {
-      Serial.printf("[ALERT CLEARED] Voltage dropped to %.3f V (< %.3f V). Camera cycle reset.\n", currentVoltage, THRESHOLD);
-      isThresholdActive = false;
+  } 
+  else if (currentVoltage < CLEAR_THRESHOLD) {
+    // Voltage dropped below clear threshold (< 0.390 V)
+    if (isIncidentActive) {
+      if (belowClearThresholdTime == 0) {
+        belowClearThresholdTime = currentMillis; // Start debounce timer
+      } 
+      else if (currentMillis - belowClearThresholdTime >= CLEAR_DEBOUNCE_MS) {
+        // Voltage remained continuously below CLEAR_THRESHOLD for 3 seconds -> CLEAR INCIDENT
+        isIncidentActive = false;
+        belowClearThresholdTime = 0;
+        Serial.printf("\n[THRESHOLD] INCIDENT CLEARED (Voltage: %.3f V < %.3f V continuously for %lu ms)\n", 
+                      currentVoltage, CLEAR_THRESHOLD, CLEAR_DEBOUNCE_MS);
+        Serial.println("[THRESHOLD] Evidence capture cycle stopped\n");
+      }
+    }
+  } 
+  else {
+    // Voltage is in Hysteresis Band (0.390 V <= Voltage < 0.400 V)
+    // Sensor is fluctuating: remain in active incident state, reset clear timer
+    belowClearThresholdTime = 0;
+
+    if (isIncidentActive && (currentMillis - lastEvidenceTime >= EVIDENCE_INTERVAL)) {
+      lastEvidenceTime = currentMillis;
+      Serial.printf("\n[CAMERA] 5-second evidence interval reached in hysteresis band (Voltage: %.3f V)\n", currentVoltage);
+      captureAndUploadEvidence(currentVoltage);
     }
   }
 

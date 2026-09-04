@@ -19,16 +19,11 @@ import {
   Gauge, 
   Image as ImageIcon 
 } from 'lucide-react';
-import api from '../services/api';
+import api, { API_URL } from '../services/api';
 import { getSocket } from '../services/socket';
 import { getEvidenceImageUrl } from '../utils/imageUrl';
 import PageHeader from '../components/PageHeader';
 import PremiumSummaryCard from '../components/ui/PremiumSummaryCard';
-
-// =========================================================================
-// CAMERA STREAM CONFIGURATION (ESP32-CAM MJPEG STREAM)
-// =========================================================================
-const CAMERA_STREAM_URL = "http://10.190.0.186:81/stream";
 
 // Premium Glass Card Wrapper
 const GlassCard = ({ 
@@ -96,6 +91,7 @@ const LiveMonitoring = () => {
   const [error, setError] = useState(null);
 
   const TARGET_DEVICE_ID = 'ESP32-CAM-001';
+  const streamUrl = `${API_URL}/live/stream/${TARGET_DEVICE_ID}`;
 
   // 1. Initial Data Fetch from Backend REST endpoints (Reuses proven Dashboard logic)
   const fetchMonitoringData = useCallback(async () => {
@@ -408,7 +404,7 @@ const LiveMonitoring = () => {
                   {!streamError ? (
                     <>
                       <img 
-                        src={CAMERA_STREAM_URL} 
+                        src={streamUrl} 
                         alt="ESP32-CAM Live Stream" 
                         className="w-full h-full object-cover"
                         onLoad={() => setStreamLoaded(true)}
@@ -433,7 +429,7 @@ const LiveMonitoring = () => {
                         <AlertTriangle className="w-7 h-7" />
                       </div>
                       <h4 className="text-white font-bold text-base">Camera Stream Disconnected</h4>
-                      <p className="text-xs text-slate-400 mt-1 font-mono">{CAMERA_STREAM_URL}</p>
+                      <p className="text-xs text-slate-400 mt-1 font-mono">{streamUrl}</p>
                       <p className="text-[11px] text-slate-500 mt-1">Ensure ESP32-CAM is powered on and reachable on the local network.</p>
                       <button 
                         type="button"

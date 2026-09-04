@@ -12,6 +12,8 @@ import satelliteRoutes from './routes/satelliteRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import activityLogRoutes from './routes/activityLogRoutes.js';
+import liveStreamRoutes from './routes/liveStreamRoutes.js';
+import { startTunnelWatcher } from './services/cloudflareTunnelService.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -26,6 +28,7 @@ connectDB();
 
 // Start background services
 startSensorMonitor();
+startTunnelWatcher();
 
 const app = express();
 const server = http.createServer(app);
@@ -75,6 +78,7 @@ app.use('/api/satellite', satelliteRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/live', liveStreamRoutes);
 
 app.get('/', (req, res) => {
   res.send('AWARE API is running...');
